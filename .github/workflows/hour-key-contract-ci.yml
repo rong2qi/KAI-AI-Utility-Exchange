@@ -52,5 +52,6 @@ jobs:
             work/kai-hour-key-contracts/evidence/ci/
             work/kai-hour-key-contracts/evidence/provider-sandbox/
             work/kai-hour-key-contracts/evidence/local-http-sandbox/
+            work/kai-hour-key-contracts/evidence/upstream-provider-contract/
           if-no-files-found: error
           retention-days: 30
