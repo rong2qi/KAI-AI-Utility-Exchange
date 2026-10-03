@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="KAI AI Utility Exchange — Hour Key as a controlled agent compute credential.">
+  <title>KAI AI Utility Exchange — Hour Key</title>
+  <style>
+    :root {
+      --ink: #07151f;
+      --navy: #0a1d2a;
+      --navy-2: #102e3f;
+      --panel: #12394b;
+      --panel-2: #0d2938;
+      --paper: #edf5f3;
+      --muted: #91afb6;
+      --muted-2: #6f8d96;
+      --cyan: #7ce6dc;
+      --teal: #11b6ac;
+      --orange: #ffb35c;
+      --red: #ff6e5e;
+      --line: rgba(173, 223, 222, .18);
+      --line-bright: rgba(124, 230, 220, .42);
+      --display: "Avenir Next", "PingFang SC", "Helvetica Neue", sans-serif;
+      --body: "Avenir Next", "PingFang SC", "Helvetica Neue", sans-serif;
+      --mono: "SF Mono", "Menlo", "PingFang SC", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--body);
+      line-height: 1.55;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .15;
+      background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: linear-gradient(to bottom, #000, transparent 80%);
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1240px, calc(100% - 48px)); margin: 0 auto; position: relative; }
+    .eyebrow { color: var(--cyan); font: 600 11px/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+    .mono { font-family: var(--mono); }
+    .muted { color: var(--muted); }
+    .rule { border-top: 1px solid var(--line); }
+
+    nav {
+      position: sticky; top: 0; z-index: 10;
+      height: 76px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(7, 21, 31, .82);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(173, 223, 222, .1);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .02em; }
+    .brand-mark { width: 30px; height: 30px; border: 1px solid var(--cyan); display: grid; place-items: center; border-radius: 50%; color: var(--cyan); font: 700 13px var(--mono); box-shadow: 0 0 24px rgba(124,230,220,.14); }
+    .nav-links { display: flex; gap: 26px; align-items: center; color: var(--muted); font-size: 13px; }
+    .nav-links a:hover { color: var(--paper); }
+    .nav-cta { border: 1px solid var(--line-bright); color: var(--cyan); padding: 9px 14px; border-radius: 999px; background: transparent; }
+    .nav-cta:hover { background: rgba(124,230,220,.1); }
+
+    .hero { padding: 94px 0 64px; min-height: 780px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(420px, .95fr); gap: 72px; align-items: center; }
+    .hero-copy { max-width: 690px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { margin-top: 24px; font: 700 clamp(54px, 7vw, 98px)/.98 var(--display); letter-spacing: -.065em; text-wrap: balance; }
+    .hero-copy h1 span { color: var(--cyan); display: block; }
+    .hero-lede { margin-top: 32px; max-width: 590px; color: #c9dcdb; font-size: clamp(18px, 2vw, 23px); line-height: 1.55; text-wrap: pretty; }
+    .hero-actions { display: flex; gap: 12px; margin-top: 34px; flex-wrap: wrap; }
+    .button { border: 1px solid transparent; border-radius: 6px; min-height: 46px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .2s ease, background .2s ease, border-color .2s ease; }
+    .button:hover { transform: translateY(-2px); }
+    .button-primary { background: var(--cyan); color: var(--ink); font-weight: 700; }
+    .button-secondary { border-color: var(--line-bright); color: var(--cyan); background: rgba(124,230,220,.06); }
+    .hero-note { margin-top: 18px; color: var(--muted-2); font: 11px/1.5 var(--mono); }
+
+    .key-stage { position: relative; min-height: 520px; display: grid; place-items: center; }
+    .key-stage::before { content: ""; position: absolute; width: 380px; height: 380px; border-radius: 50%; border: 1px solid rgba(124,230,220,.13); box-shadow: 0 0 0 34px rgba(124,230,220,.025), 0 0 0 70px rgba(124,230,220,.018); }
+    .key-card { width: min(100%, 440px); min-height: 390px; position: relative; padding: 28px; background: linear-gradient(145deg, rgba(18,57,75,.96), rgba(8,28,40,.98)); border: 1px solid var(--line-bright); box-shadow: 18px 24px 70px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08); transform: rotate(2.3deg); }
+    .key-card::after { content: ""; position: absolute; inset: 11px; border: 1px solid rgba(124,230,220,.2); pointer-events: none; }
+    .key-card > * { position: relative; z-index: 1; }
+    .key-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .key-card-name { margin-top: 8px; font-size: 18px; font-weight: 700; letter-spacing: .03em; }
+    .live-pill { border: 1px solid rgba(124,230,220,.5); color: var(--cyan); border-radius: 999px; padding: 5px 9px; font: 600 10px var(--mono); letter-spacing: .08em; }
+    .slot { margin-top: 46px; display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+    .slot-time { font: 700 clamp(45px, 6vw, 70px)/.9 var(--mono); letter-spacing: -.08em; color: var(--paper); }
+    .slot-tz { color: var(--orange); font: 12px var(--mono); }
+    .slot-line { margin-top: 18px; height: 4px; background: rgba(124,230,220,.14); position: relative; }
+    .slot-line::before { content: ""; position: absolute; left: 0; top: -3px; width: 62%; height: 10px; background: var(--cyan); box-shadow: 0 0 16px rgba(124,230,220,.6); }
+    .key-grid { margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+    .key-field { min-height: 64px; padding: 12px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .key-field span { display: block; color: var(--muted); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .key-field strong { display: block; margin-top: 6px; font-size: 14px; font-weight: 600; }
+    .key-field .on { color: var(--cyan); }
+    .key-field .off { color: var(--orange); }
+    .key-seal { position: absolute; right: 22px; bottom: 24px; color: rgba(124,230,220,.48); font: 10px var(--mono); letter-spacing: .08em; }
+
+    .impact-strip { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 28px 0 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .impact-number { font: 700 clamp(40px, 6vw, 76px)/.92 var(--mono); letter-spacing: -.08em; color: var(--cyan); }
+    .impact-label { margin-top: 10px; color: var(--muted); font-size: 14px; }
+    .impact-note { margin-top: 4px; color: var(--muted-2); font: 11px var(--mono); }
+
+    section { padding: 124px 0; }
+    .section-head { display: grid; grid-template-columns: .75fr 1.25fr; gap: 60px; align-items: end; }
+    .section-head h2 { margin-top: 18px; max-width: 680px; font: 700 clamp(38px, 5vw, 68px)/1.03 var(--display); letter-spacing: -.06em; text-wrap: balance; }
+    .section-head p { color: var(--muted); max-width: 520px; font-size: 16px; }
+
+    .plane-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-top: 58px; background: var(--line); border: 1px solid var(--line); }
+    .plane { min-height: 330px; padding: 32px; background: rgba(12, 38, 52, .86); position: relative; }
+    .plane.discovery { background: linear-gradient(145deg, rgba(21, 81, 85, .72), rgba(13, 42, 55, .92)); }
+    .plane h3 { margin-top: 22px; font-size: 27px; letter-spacing: -.03em; }
+    .plane p { margin-top: 10px; color: var(--muted); max-width: 410px; }
+    .plane-list { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 13px; color: #d6e5e3; font-size: 14px; }
+    .plane-list li { display: flex; gap: 10px; align-items: baseline; }
+    .plane-list li::before { content: "↳"; color: var(--cyan); font: 14px var(--mono); }
+    .plane-badge { position: absolute; right: 28px; top: 28px; color: var(--muted); font: 10px var(--mono); letter-spacing: .08em; }
+    .plane.discovery .plane-badge { color: var(--orange); }
+
+    .intent-layout { margin-top: 58px; display: grid; grid-template-columns: .9fr 1.1fr; gap: 34px; align-items: start; }
+    .intent-prompt { border: 1px solid var(--line); background: var(--panel-2); padding: 28px; min-height: 365px; }
+    .prompt-row { display: flex; gap: 12px; align-items: flex-start; margin-top: 22px; }
+    .prompt-dot { width: 8px; height: 8px; background: var(--cyan); border-radius: 50%; flex: 0 0 auto; margin-top: 8px; }
+    .prompt-text { color: #d5e4e2; font-size: 17px; }
+    .prompt-text small { display: block; margin-top: 6px; color: var(--muted-2); font: 11px var(--mono); }
+    .intent-table { border: 1px solid var(--line); }
+    .intent-line { display: grid; grid-template-columns: 1fr 140px; gap: 20px; padding: 20px 22px; border-bottom: 1px solid var(--line); }
+    .intent-line:last-child { border-bottom: 0; }
+    .intent-line span:first-child { color: #d5e4e2; }
+    .intent-line span:last-child { text-align: right; font: 11px var(--mono); color: var(--muted); }
+    .intent-line.yes span:last-child { color: var(--cyan); }
+    .intent-line.no span:last-child { color: var(--orange); }
+
+    .manifest-grid { margin-top: 58px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: stretch; }
+    .code-box { background: #06131c; border: 1px solid rgba(124,230,220,.25); padding: 26px; overflow: auto; }
+    pre { margin: 0; font: 12px/1.75 var(--mono); color: #bdd7d4; white-space: pre-wrap; }
+    .code-key { color: var(--cyan); }
+    .code-value { color: var(--orange); }
+    .manifest-copy { padding: 12px 0; }
+    .manifest-copy h3 { font-size: 31px; line-height: 1.08; letter-spacing: -.04em; }
+    .manifest-copy p { margin-top: 18px; color: var(--muted); font-size: 16px; }
+    .manifest-points { display: grid; gap: 18px; margin-top: 30px; }
+    .manifest-point { display: grid; grid-template-columns: 28px 1fr; gap: 12px; }
+    .manifest-point b { color: var(--cyan); font: 13px var(--mono); }
+    .manifest-point p { margin: 0; color: #d5e4e2; font-size: 14px; }
+
+    .test-shell { margin-top: 58px; border: 1px solid var(--line-bright); background: linear-gradient(150deg, rgba(18,57,75,.72), rgba(6,19,28,.95)); padding: 30px; display: grid; grid-template-columns: .92fr 1.08fr; gap: 30px; }
+    .test-shell h3 { margin-top: 14px; font-size: 32px; letter-spacing: -.04em; }
+    .test-shell p { margin-top: 12px; color: var(--muted); }
+    .test-input { margin-top: 24px; display: flex; gap: 10px; }
+    .test-input input { flex: 1; min-width: 0; background: #07151f; border: 1px solid var(--line); color: var(--paper); padding: 12px 14px; outline: none; font: 12px var(--mono); }
+    .test-input input:focus { border-color: var(--cyan); }
+    .test-privacy { margin-top: 10px; color: var(--muted-2); font: 10px var(--mono); }
+    .trace { border: 1px solid var(--line); background: rgba(5,16,24,.76); padding: 20px; min-height: 260px; }
+    .trace-head { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font: 10px var(--mono); }
+    .trace-list { margin-top: 20px; display: grid; gap: 14px; }
+    .trace-item { display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: baseline; font-size: 13px; }
+    .trace-item::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
+    .trace-item.active::before { background: var(--cyan); box-shadow: 0 0 12px rgba(124,230,220,.7); }
+    .trace-item.warn::before { background: var(--orange); }
+    .trace-item .status { color: var(--muted-2); font: 10px var(--mono); }
+    .trace-item.active .status { color: var(--cyan); }
+    .trace-item.warn .status { color: var(--orange); }
+
+    .flow { margin-top: 58px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .flow-step { padding: 24px 18px 28px; border-right: 1px solid var(--line); min-height: 174px; }
+    .flow-step:last-child { border-right: 0; }
+    .flow-index { color: var(--cyan); font: 11px var(--mono); }
+    .flow-step h3 { margin-top: 24px; font-size: 17px; }
+    .flow-step p { margin-top: 7px; color: var(--muted); font-size: 12px; }
+
+    footer { padding: 30px 0 50px; display: flex; justify-content: space-between; gap: 20px; color: var(--muted-2); font: 11px var(--mono); }
+
+    .lazy-module { min-height: var(--module-min-height, 680px); padding: 124px 0; position: relative; border-top: 1px solid var(--line); }
+    .lazy-module[data-tone="band"] { background: rgba(13,42,55,.55); }
+    .lazy-module[data-tone="dark"] { background: #06131c; }
+    .module-placeholder { min-height: calc(var(--module-min-height, 680px) - 248px); display: flex; flex-direction: column; justify-content: center; gap: 14px; color: var(--muted); }
+    .module-placeholder strong { color: var(--paper); font: 700 clamp(28px, 4vw, 52px)/1.05 var(--display); letter-spacing: -.05em; }
+    .module-placeholder span { color: var(--muted-2); font: 11px var(--mono); letter-spacing: .12em; }
+    .module-placeholder::after { content: ""; width: min(280px, 55vw); height: 1px; background: linear-gradient(90deg, var(--cyan), transparent); margin-top: 12px; }
+    .lazy-module.is-loaded .module-content { animation: module-in .65s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes module-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+    .reveal { opacity: 0; transform: translateY(18px); animation: rise .75s cubic-bezier(.2,.7,.2,1) forwards; }
+    .delay-1 { animation-delay: .12s; } .delay-2 { animation-delay: .24s; } .delay-3 { animation-delay: .36s; }
+    @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; animation: none; } * { scroll-behavior: auto !important; } }
+    @media (max-width: 900px) {
+      .shell { width: min(100% - 34px, 680px); }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .hero { padding-top: 64px; min-height: auto; grid-template-columns: 1fr; gap: 54px; }
+      .key-stage { min-height: 430px; }
+      .section-head, .intent-layout, .manifest-grid, .test-shell { grid-template-columns: 1fr; }
+      .section-head { gap: 22px; }
+      .impact-strip { grid-template-columns: 1fr; gap: 22px; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-step { border-right: 0; border-bottom: 1px solid var(--line); min-height: 0; }
+      .flow-step:last-child { border-bottom: 0; }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 26px, 680px); }
+      nav { height: 64px; }
+      .hero h1 { font-size: 54px; }
+      .hero-lede { font-size: 17px; }
+      .key-card { padding: 22px; min-height: 360px; }
+      .slot-time { font-size: 43px; }
+      .plane-grid { grid-template-columns: 1fr; }
+      .plane { min-height: 0; }
+      .intent-line { grid-template-columns: 1fr; gap: 6px; }
+      .intent-line span:last-child { text-align: left; }
+      .test-input { flex-direction: column; }
+      .test-input .button { width: 100%; }
+      section { padding: 88px 0; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="shell" style="display:flex;align-items:center;justify-content:space-between;width:min(1240px,calc(100% - 48px));">
+      <a class="brand" href="#top" aria-label="KAI AI Utility Exchange home"><span class="brand-mark">K</span><span>KAI AI Utility Exchange</span></a>
+      <div class="nav-links">
+        <a href="#boundary">Key Boundary</a>
+        <a href="#manifest">Manifest</a>
+        <a href="#test">Test One Key</a>
+        <a class="nav-cta" href="#test">连接测试 Key</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <div class="shell hero">
+      <div class="hero-copy reveal">
+        <div class="eyebrow">GEO / HOUR KEY / AGENT UTILITY</div>
+        <h1>让 AI 需要算力时，<span>先问 KAI。</span></h1>
+        <p class="hero-lede">一枚小时 Key，不只是访问凭证。它把时间、模型、供应商、持仓和实时 Offer 查询能力绑定在一起，并且只在明确的算力发现意图下触发。</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#test">运行单 Key 测试 <span>↗</span></a>
+          <a class="button button-secondary" href="#boundary">查看调用边界</a>
+        </div>
+        <p class="hero-note">COMPUTE WORK STAYS DIRECT · DISCOVERY IS ON-DEMAND · PROVIDER SWITCHING BY GRANT</p>
+      </div>
+      <div class="key-stage reveal delay-1" aria-label="KAI Hour Key visual">
+        <article class="key-card">
+          <div class="key-card-top">
+            <div><div class="eyebrow">KAI / HOUR KEY</div><div class="key-card-name">Agent Compute Credential</div></div>
+            <span class="live-pill">LIVE WINDOW</span>
+          </div>
+          <div class="slot"><div class="slot-time">18:00—19:00</div><div class="slot-tz">CST / +08</div></div>
+          <div class="slot-line" aria-label="hourly window progress"></div>
+          <div class="key-grid">
+            <div class="key-field"><span>Model scope</span><strong>Model A</strong></div>
+            <div class="key-field"><span>Provider scope</span><strong>Provider A</strong></div>
+            <div class="key-field"><span>Compute</span><strong class="on">ACTIVE</strong></div>
+            <div class="key-field"><span>Discovery</span><strong class="off">ON-DEMAND</strong></div>
+            <div class="key-field"><span>Auto switch</span><strong class="off">OFF</strong></div>
+            <div class="key-field"><span>Source</span><strong>kai.com</strong></div>
+          </div>
+          <div class="key-seal">SIGNED / SCOPED / EXPIRING</div>
+        </article>
+      </div>
+    </div>
+
+    <div class="shell impact-strip reveal delay-2" aria-label="scenario metrics">
+      <div><div class="impact-number">100M</div><div class="impact-label">AI 生成结果 / 月</div><div class="impact-note">DISCOVERY SURFACE</div></div>
+      <div><div class="impact-number">400K</div><div class="impact-label">AI 引荐访问 / 月</div><div class="impact-note">KAI REFERRED TRAFFIC</div></div>
+      <div><div class="impact-number">$60.9M</div><div class="impact-label">年化 GMV</div><div class="impact-note">UTILITY EXCHANGE SCENARIO</div></div>
+    </div>
+
+    <section id="boundary" class="lazy-module" data-lazy-module data-template="template-boundary" data-module-label="01" style="--module-min-height:760px" aria-busy="true"><div class="module-placeholder shell"><div class="eyebrow">MODULE STANDBY / 01</div><strong>滚动到此处，加载 Boundary</strong><span>LOAD ON VIEWPORT</span></div></section>
+    <section id="intent" class="lazy-module" data-tone="band" data-lazy-module data-template="template-intent" data-module-label="02" style="--module-min-height:780px" aria-busy="true"><div class="module-placeholder shell"><div class="eyebrow">MODULE STANDBY / 02</div><strong>滚动到此处，加载 Intent</strong><span>LOAD ON VIEWPORT</span></div></section>
+    <section id="manifest" class="lazy-module" data-lazy-module data-template="template-manifest" data-module-label="03" style="--module-min-height:780px" aria-busy="true"><div class="module-placeholder shell"><div class="eyebrow">MODULE STANDBY / 03</div><strong>滚动到此处，加载 Manifest</strong><span>LOAD ON VIEWPORT</span></div></section>
+    <section id="test" class="lazy-module" data-tone="dark" data-lazy-module data-template="template-test" data-module-label="04" style="--module-min-height:650px" aria-busy="true"><div class="module-placeholder shell"><div class="eyebrow">MODULE STANDBY / 04</div><strong>滚动到此处，加载 Test</strong><span>LOAD ON VIEWPORT</span></div></section>
+    <section id="receipt" class="lazy-module" data-lazy-module data-template="template-receipt" data-module-label="05" style="--module-min-height:560px" aria-busy="true"><div class="module-placeholder shell"><div class="eyebrow">MODULE STANDBY / 05</div><strong>滚动到此处，加载 Receipt</strong><span>LOAD ON VIEWPORT</span></div></section>
+  </main>
+
+  <template id="template-boundary"><div class="module-content">
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="eyebrow">01 / KEY BOUNDARY</div><h2>同一枚 Key，两个平面；只有一个会主动发现。</h2></div>
+          <p>普通算力工作保持直接、稳定和可预测。KAI 的实时 Offer 查询被隔离在 Discovery Plane，只在问题确实涉及价格、容量、状态或可用性时出现。</p>
+        </div>
+        <div class="plane-grid">
+          <article class="plane"><span class="plane-badge">DEFAULT / DIRECT</span><div class="eyebrow">COMPUTE PLANE</div><h3>执行算力任务</h3><p>用户让 Agent 写代码、总结文档或运行模型时，小时 Key 直接服务当前任务。</p><ul class="plane-list"><li>不读取实时 Offer</li><li>不触发 kai.com 查询</li><li>不自动切换供应商</li></ul></article>
+          <article class="plane discovery"><span class="plane-badge">EXPLICIT INTENT ONLY</span><div class="eyebrow">DISCOVERY PLANE</div><h3>发现可用算力</h3><p>用户问“现在什么模型有容量”“哪一个区域更便宜”时，Agent 才调用 KAI 工具。</p><ul class="plane-list"><li>查询 Offer / Capacity / Status</li><li>显示 kai.com 来源和时间戳</li><li>返回当前 Key 可执行的范围</li></ul></article>
+        </div>
+      </div>
+    </div></template>
+  <template id="template-intent"><div class="module-content">
+      <div class="shell">
+        <div class="section-head"><div><div class="eyebrow">02 / INTENT GATE</div><h2>不是每个问题，都值得一次查询。</h2></div><p>Agent Gateway 先判断问题是否属于实时算力发现，再决定是否曝光 KAI 工具。用户可以看到调用原因，模型也不能绕过 Key 的范围。</p></div>
+        <div class="intent-layout">
+          <div class="intent-prompt"><div class="eyebrow">LIVE USER PROMPTS</div><div class="prompt-row"><span class="prompt-dot"></span><div class="prompt-text">帮我总结这份文档<small>COMPUTE PLANE / NO TOOL CALL</small></div></div><div class="prompt-row"><span class="prompt-dot" style="background:var(--orange)"></span><div class="prompt-text">现在什么 GPU 还有容量？<small>DISCOVERY PLANE / KAI QUERY</small></div></div><div class="prompt-row"><span class="prompt-dot" style="background:var(--orange)"></span><div class="prompt-text">我的小时 Key 还能用多久？<small>HOLDING STATUS / KAI QUERY</small></div></div></div>
+          <div class="intent-table"><div class="intent-line no"><span>帮我生成一个 Python 脚本</span><span>NO CALL</span></div><div class="intent-line yes"><span>现在什么模型还有容量？</span><span>CALL KAI</span></div><div class="intent-line yes"><span>哪个区域的价格更低？</span><span>CALL KAI</span></div><div class="intent-line no"><span>帮我切换到另一家供应商</span><span>DENY / SCOPE</span></div><div class="intent-line yes"><span>我的 Key 什么时候失效？</span><span>CALL KAI</span></div></div>
+        </div>
+      </div>
+    </div></template>
+  <template id="template-manifest"><div class="module-content">
+      <div class="shell">
+        <div class="section-head"><div><div class="eyebrow">03 / CAPABILITY MANIFEST</div><h2>Key 不携带一堆暗示，Key 携带可验证的边界。</h2></div><p>签名后的 Manifest 描述它能做什么、在什么时间做、对谁做，以及什么时候必须停止。工具逻辑由 Agent Gateway 提供，权限由小时 Key 限定。</p></div>
+        <div class="manifest-grid">
+          <div class="code-box"><pre><span class="code-key">"key_id"</span>: <span class="code-value">"kai_hour_xxx"</span>,
+<span class="code-key">"hour_key_status"</span>: <span class="code-value">"packaged"</span>,
+<span class="code-key">"slot_start"</span>: <span class="code-value">"18:00"</span>,
+<span class="code-key">"slot_end"</span>: <span class="code-value">"19:00"</span>,
+<span class="code-key">"model_scope"</span>: [<span class="code-value">"model-a"</span>],
+<span class="code-key">"provider_scope"</span>: [<span class="code-value">"provider-a"</span>],
+<span class="code-key">"tool_policy"</span>: {
+  <span class="code-key">"trigger_mode"</span>: <span class="code-value">"explicit_intent_only"</span>,
+  <span class="code-key">"provider_switch_policy"</span>: <span class="code-value">"requires_explicit_grant"</span>,
+  <span class="code-key">"allowed_domains"</span>: [<span class="code-value">"kai.com"</span>]
+},
+<span class="code-key">"capabilities"</span>: [<span class="code-value">"query_offer"</span>, <span class="code-value">"get_usage_receipt"</span>]</pre></div>
+<div class="manifest-copy"><div class="eyebrow">SIGNED / SCOPED / EXPIRING</div><h3>把“自然调用”变成可解释的系统行为。</h3><p>模型不需要记住 KAI。它只需要读懂当前 Key 暴露出来的工具边界，并在满足触发条件时查询外部事实。</p><div class="manifest-points"><div class="manifest-point"><b>01</b><p>默认隐藏 Discovery 工具，普通算力任务不会误触发。</p></div><div class="manifest-point"><b>02</b><p>每个 Offer 返回来源、更新时间、Offer ID 和当前小时窗口。</p></div><div class="manifest-point"><b>03</b><p>当前授权不允许隐式切换；跨范围执行需要显式授权版本和确认，账户 Key 保持不变。</p></div></div></div>
+        </div>
+      </div>
+    </div></template>
+  <template id="template-test"><div class="module-content">
+      <div class="shell">
+        <div class="section-head"><div><div class="eyebrow">04 / TEST ONE KEY</div><h2>先测边界，再谈规模。</h2></div><p>这一区域是单根 Key 的受控测试台。输入仅保存在本地页面状态，用固定测试问题观察 Agent 是否正确分流。</p></div>
+        <div class="test-shell">
+          <div><div class="eyebrow">LOCAL TEST CONSOLE</div><h3>连接一根测试 Key</h3><p>测试台会展示当前时间窗口、权限范围和每一步调用轨迹。它不会替你扩大模型、供应商或区域范围。</p><div class="test-input"><input id="keyInput" type="password" placeholder="kai_hour_test_••••••••" aria-label="test key"><button class="button button-primary" id="connectBtn">连接并检查</button></div><div class="test-privacy">LOCAL STATE ONLY · NO NETWORK SUBMIT IN THIS PREVIEW</div></div>
+          <div class="trace" aria-live="polite"><div class="trace-head"><span>CALL TRACE / KEY BOUNDARY</span><span id="traceStatus">READY</span></div><div class="trace-list" id="traceList"><div class="trace-item active"><span>读取小时窗口：18:00—19:00</span><span class="status">PASS</span></div><div class="trace-item active"><span>读取模型 / 供应商范围：Model A / Provider A</span><span class="status">PASS</span></div><div class="trace-item"><span>普通算力任务：不曝光 Discovery 工具</span><span class="status">WAITING</span></div><div class="trace-item"><span>实时算力问题：等待用户触发测试</span><span class="status">WAITING</span></div></div><div class="hero-actions" style="margin-top:24px"><button class="button button-secondary" id="computeBtn">运行普通算力测试</button><button class="button button-secondary" id="discoveryBtn">运行实时查询测试</button></div></div>
+        </div>
+      </div>
+    </div></template>
+  <template id="template-receipt"><div class="module-content">
+      <div class="shell">
+        <div class="section-head"><div><div class="eyebrow">05 / RECEIPT → GEO</div><h2>每一次使用，都留下下一次推荐的证据。</h2></div><p>Offer、Holding、Usage 和 Receipt 不是后台字段，而是 KAI 能够持续进入 AI 答案的外部记忆。</p></div>
+        <div class="flow"><div class="flow-step"><div class="flow-index">01</div><h3>AI 发现</h3><p>问题进入 KAI 语义入口</p></div><div class="flow-step"><div class="flow-index">02</div><h3>实时 Offer</h3><p>返回可查、可比、可执行的事实</p></div><div class="flow-step"><div class="flow-index">03</div><h3>Holding</h3><p>小时窗口和持仓状态被锁定</p></div><div class="flow-step"><div class="flow-index">04</div><h3>Usage</h3><p>使用结果写入回执</p></div><div class="flow-step"><div class="flow-index">05</div><h3>GEO 回流</h3><p>事实变成下一次 AI 推荐</p></div></div>
+      </div>
+    </div></template>
+
+  <footer class="shell"><span>KAI AI Utility Exchange</span><span>HOUR KEY / CONTROLLED DISCOVERY / GEO LOOP</span></footer>
+
+  <script>
+    function bindTestConsole(root) {
+      const keyInput = root.querySelector('#keyInput');
+      const connectBtn = root.querySelector('#connectBtn');
+      const computeBtn = root.querySelector('#computeBtn');
+      const discoveryBtn = root.querySelector('#discoveryBtn');
+      const traceList = root.querySelector('#traceList');
+      const traceStatus = root.querySelector('#traceStatus');
+      function setTrace(mode) {
+        const items = traceList.querySelectorAll('.trace-item');
+        items.forEach(item => item.classList.remove('active', 'warn'));
+        items[0].classList.add('active');
+        items[1].classList.add('active');
+        if (mode === 'compute') {
+          items[2].classList.add('active');
+          items[2].querySelector('.status').textContent = 'PASS';
+          items[3].querySelector('.status').textContent = 'NOT CALLED';
+          traceStatus.textContent = 'COMPUTE ONLY';
+        } else if (mode === 'discovery') {
+          items[3].classList.add('active');
+          items[3].querySelector('.status').textContent = 'KAI QUERY';
+          items[2].querySelector('.status').textContent = 'NOT CALLED';
+          traceStatus.textContent = 'KAI SOURCE READY';
+        } else {
+          items[2].querySelector('.status').textContent = 'WAITING';
+          items[3].querySelector('.status').textContent = 'WAITING';
+          traceStatus.textContent = 'READY';
+        }
+      }
+      connectBtn.addEventListener('click', () => {
+        const hasKey = keyInput.value.trim().length > 0;
+        keyInput.value = hasKey ? '••••••••••••••••' : 'demo_hour_key';
+        setTrace();
+        traceStatus.textContent = hasKey ? 'KEY CONNECTED' : 'DEMO KEY';
+      });
+      computeBtn.addEventListener('click', () => setTrace('compute'));
+      discoveryBtn.addEventListener('click', () => setTrace('discovery'));
+    }
+
+    const lazyModules = document.querySelectorAll('[data-lazy-module]');
+    const loadModule = (module) => {
+      if (module.dataset.state === 'loaded') return;
+      const template = document.getElementById(module.dataset.template);
+      if (!template) return;
+      module.replaceChildren(template.content.cloneNode(true));
+      module.dataset.state = 'loaded';
+      module.setAttribute('aria-busy', 'false');
+      module.classList.add('is-loaded');
+      if (module.id === 'test') bindTestConsole(module);
+    };
+    const moduleObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        loadModule(entry.target);
+        moduleObserver.unobserve(entry.target);
+      });
+    }, { rootMargin: '200px 0px', threshold: 0.01 });
+    lazyModules.forEach(module => moduleObserver.observe(module));
+  </script>
+</body>
+</html>

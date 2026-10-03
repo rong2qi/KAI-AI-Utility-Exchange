@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai.com/schemas/usage-receipt.schema.json",
+  "title": "KAI usage Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["receipt_id", "account_id", "key_id", "grant_id", "holding_id", "offer_id", "idempotency_key", "hour_key_status", "resource", "slot", "request_hash", "usage", "status", "created_at", "source_url"],
+  "properties": {
+    "receipt_id": { "type": "string", "minLength": 1 },
+    "account_id": { "type": "string", "minLength": 1 },
+    "key_id": { "type": "string", "minLength": 1 },
+    "grant_id": { "type": "string", "minLength": 1 },
+    "holding_id": { "type": "string", "minLength": 1 },
+    "offer_id": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "hour_key_status": { "const": "packaged" },
+    "resource": {
+      "type": "object", "additionalProperties": false,
+      "required": ["model", "provider", "region"],
+      "properties": { "model": { "type": "string" }, "provider": { "type": "string" }, "region": { "type": "string" } }
+    },
+    "slot": { "$ref": "https://kai.com/schemas/authorization-grant.schema.json#/$defs/slot" },
+    "request_hash": { "type": "string", "minLength": 16 },
+    "usage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_units", "output_units", "total_units"],
+      "properties": { "input_units": { "type": "number", "minimum": 0 }, "output_units": { "type": "number", "minimum": 0 }, "total_units": { "type": "number", "minimum": 0 } }
+    },
+    "status": { "enum": ["succeeded", "failed"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source_url": { "type": "string", "format": "uri" }
+  }
+}

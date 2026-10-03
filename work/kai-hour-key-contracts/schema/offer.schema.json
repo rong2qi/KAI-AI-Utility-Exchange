@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai.com/schemas/offer.schema.json",
+  "title": "KAI Offer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["offer_id", "resource", "slot", "price", "availability", "retrieved_at", "valid_until", "source_url", "execution_eligible", "hour_key_status"],
+  "properties": {
+    "offer_id": { "type": "string", "minLength": 1 },
+    "resource": {
+      "type": "object", "additionalProperties": false,
+      "required": ["model", "provider", "region"],
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "region": { "type": "string", "minLength": 1 }
+      }
+    },
+    "slot": { "$ref": "https://kai.com/schemas/authorization-grant.schema.json#/$defs/slot" },
+    "price": {
+      "type": "object", "additionalProperties": false,
+      "required": ["amount", "currency", "unit"],
+      "properties": { "amount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$" }, "currency": { "type": "string", "minLength": 1 }, "unit": { "type": "string", "minLength": 1 } }
+    },
+    "availability": { "enum": ["available", "limited", "unavailable"] },
+    "retrieved_at": { "type": "string", "format": "date-time" },
+    "valid_until": { "type": "string", "format": "date-time" },
+    "source_url": { "type": "string", "format": "uri" },
+    "execution_eligible": { "type": "boolean" },
+    "hour_key_status": { "enum": ["unpackaged", "packaged"] }
+  }
+}

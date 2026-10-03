@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai.com/schemas/holding.schema.json",
+  "title": "KAI Hour Holding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["holding_id", "account_id", "grant_id", "offer_id", "resource_scope", "slot", "units_remaining", "status"],
+  "properties": {
+    "holding_id": { "type": "string", "minLength": 1 },
+    "account_id": { "type": "string", "minLength": 1 },
+    "grant_id": { "type": "string", "minLength": 1 },
+    "offer_id": { "type": "string", "minLength": 1 },
+    "resource_scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["models", "providers", "regions"],
+      "properties": {
+        "models": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "providers": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "regions": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+      }
+    },
+    "slot": { "$ref": "https://kai.com/schemas/authorization-grant.schema.json#/$defs/slot" },
+    "units_remaining": { "type": "number", "minimum": 0 },
+    "status": { "enum": ["held", "active", "exhausted", "expired", "revoked"] }
+  }
+}

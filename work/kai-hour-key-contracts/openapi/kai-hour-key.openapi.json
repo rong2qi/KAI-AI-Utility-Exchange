@@ -1,0 +1,345 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KAI Hour Key Runtime candidate contract",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "{baseUrl}",
+      "variables": {
+        "baseUrl": {
+          "default": "http://localhost:4321",
+          "description": "Deployment-provided gateway base URL"
+        }
+      }
+    }
+  ],
+  "paths": {
+    "/v1/key/introspect": {
+      "post": {
+        "operationId": "introspectKey",
+        "security": [
+          {
+            "KaiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolve account Key and current authorization grants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/key-introspection.schema.json"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          }
+        }
+      }
+    },
+    "/v1/offers": {
+      "get": {
+        "operationId": "queryOffers",
+        "security": [
+          {
+            "KaiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fresh canonical KAI Offers with market execution eligibility and Hour Key packaging status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "../schema/offer.schema.json"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "503": {
+            "description": "KAI Offer catalog is temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/runtime-error.schema.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/holdings/lock": {
+      "post": {
+        "operationId": "lockOffer",
+        "security": [
+          {
+            "KaiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "offer_id",
+                  "confirmed"
+                ],
+                "properties": {
+                  "offer_id": {
+                    "type": "string"
+                  },
+                  "confirmed": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current Offer packaged as a KAI Hour Key and locked as a Holding",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/holding.schema.json"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "404": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "503": {
+            "description": "Offer packaging is temporarily unavailable; no Holding was created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/runtime-error.schema.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compute": {
+      "post": {
+        "operationId": "compute",
+        "security": [
+          {
+            "KaiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "holding_id",
+                  "input"
+                ],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "Optional when the Holding has one authorized model; explicit values must remain within the Holding scope."
+                  },
+                  "provider": {
+                    "type": "string",
+                    "description": "Optional when the Holding has one authorized provider; explicit values must remain within the Holding scope."
+                  },
+                  "region": {
+                    "type": "string",
+                    "description": "Optional when the Holding has one authorized region; explicit values must remain within the Holding scope."
+                  },
+                  "holding_id": {
+                    "type": "string"
+                  },
+                  "input": {}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Normalized provider output and Usage Receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/receipt.schema.json"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "503": {
+            "description": "Usage execution is recoverable but its ledger or Receipt store is temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/runtime-error.schema.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/receipts/{receipt_id}": {
+      "get": {
+        "operationId": "getPrivateReceipt",
+        "security": [
+          {
+            "KaiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "receipt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private account Receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/receipt.schema.json"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "404": {
+            "description": "Receipt was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schema/runtime-error.schema.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "KaiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque account-bound KAI Key"
+      }
+    },
+    "responses": {
+      "RuntimeError": {
+        "description": "Structured runtime error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../schema/runtime-error.schema.json"
+            }
+          }
+        }
+      },
+      "Denied": {
+        "description": "Structured policy or scope denial",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../schema/runtime-error.schema.json"
+            }
+          }
+        }
+      }
+    }
+  }
+}

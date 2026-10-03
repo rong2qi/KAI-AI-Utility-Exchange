@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai.com/schemas/key-introspection.schema.json",
+  "title": "KAI account Key introspection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key", "grants"],
+  "properties": {
+    "key": { "$ref": "https://kai.com/schemas/hour-key-envelope.schema.json" },
+    "grants": { "type": "array", "items": { "$ref": "https://kai.com/schemas/authorization-grant.schema.json" } }
+  }
+}
