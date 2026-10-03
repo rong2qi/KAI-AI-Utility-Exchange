@@ -24,4 +24,6 @@ npm run provider:sandbox:verify
 
 ## 后续层级
 
-`local-http-sandbox` 会增加只监听 `127.0.0.1` 的 HTTP 边界；`upstream-provider-sandbox` 才需要供应商账号、endpoint、token、配额和预算；`staging` 需要真实 Provider 沙盒、事务数据库、故障注入和回滚制品。
+`local-http-sandbox` 通过 `npm run http:sandbox:verify` 验证只监听 `127.0.0.1` 的 HTTP 边界，证据写入 `evidence/local-http-sandbox/`。它覆盖 HTTP 序列化、状态码、超时、请求体上限、未知路径和服务关闭，但仍不访问外网。
+
+`upstream-provider-sandbox` 才需要供应商账号、endpoint、token、配额和预算；`staging` 需要真实 Provider 沙盒、事务数据库、故障注入和回滚制品。

@@ -6,9 +6,9 @@
 
 1. 检出触发工作流的精确修订；
 2. 用 package-lock.json 执行 npm ci；
-3. 执行 `npm run quality:verify`，包含 ESLint、TypeScript 声明检查、Node 覆盖率门槛（行 90%、分支 75%、函数 90%）、`internal-provider-sandbox` 验证和生产依赖安全审计，并保留 `quality.log`；
+3. 执行 `npm run quality:verify`，包含 ESLint、TypeScript 声明检查、Node 覆盖率门槛（行 90%、分支 75%、函数 90%）、`internal-provider-sandbox`、`local-http-sandbox` 验证和生产依赖安全审计，并保留 `quality.log`；
 4. 执行 npm run ci:verify；
-5. 上传 JSON 证据、Provider Sandbox 证据和原始测试日志。
+5. 上传 JSON 证据、Provider Sandbox 证据、本地 HTTP Sandbox 证据和原始测试日志。
 
 npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.json。JSON 包含运行时间、Node/npm 版本、测试退出码、Git 修订（若当前目录属于 Git 仓库）以及排除生成目录后的源码 SHA-256 指纹。原始日志用于复核输出，JSON 用于机器读取。失败运行也会上传证据，避免只保留绿色结果。
 

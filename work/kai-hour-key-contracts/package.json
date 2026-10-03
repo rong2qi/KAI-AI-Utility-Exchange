@@ -13,8 +13,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "security:audit": "npm audit --audit-level=high",
-    "quality:verify": "npm run lint && npm run typecheck && npm run test:coverage && npm run provider:sandbox:verify && npm run security:audit",
+    "quality:verify": "npm run lint && npm run typecheck && npm run test:coverage && npm run provider:sandbox:verify && npm run http:sandbox:verify && npm run security:audit",
     "provider:sandbox:verify": "node scripts/provider-sandbox-verify.mjs",
+    "http:sandbox:verify": "node scripts/local-http-sandbox-verify.mjs",
     "ci:verify": "node scripts/ci-verify.mjs"
   },
   "devDependencies": {
