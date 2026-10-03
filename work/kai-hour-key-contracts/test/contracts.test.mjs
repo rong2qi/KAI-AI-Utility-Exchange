@@ -103,6 +103,7 @@ test('wire schemas are strict and keep secrets out of the envelope', async () =>
   const envelope = JSON.parse(await readFile(new URL('../schema/hour-key-envelope.schema.json', import.meta.url)));
   const grantSchema = JSON.parse(await readFile(new URL('../schema/authorization-grant.schema.json', import.meta.url)));
   const offerSchema = JSON.parse(await readFile(new URL('../schema/offer.schema.json', import.meta.url)));
+  const providerSandboxSchema = JSON.parse(await readFile(new URL('../schema/provider-sandbox-config.schema.json', import.meta.url)));
   assert.equal(envelope.additionalProperties, false);
   assert.equal(grantSchema.additionalProperties, false);
   assert.ok(!envelope.properties.provider_api_key);
@@ -110,6 +111,9 @@ test('wire schemas are strict and keep secrets out of the envelope', async () =>
   assert.equal(grantSchema.properties.allow_provider_switch.type, 'boolean');
   assert.equal(grantSchema.properties.allow_provider_switch.default, false);
   assert.deepEqual(offerSchema.properties.hour_key_status.enum, ['unpackaged', 'packaged']);
+  assert.equal(providerSandboxSchema.additionalProperties, false);
+  assert.ok(providerSandboxSchema.properties.profile.enum.includes('timeout'));
+  assert.ok(!providerSandboxSchema.properties.api_key);
 });
 
 test('source URLs are canonicalized to approved KAI fact pages', () => {

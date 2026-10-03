@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { HourKeyRuntime } from '../src/runtime.mjs';
 import { HourKeyPackagingAdapter } from '../src/adapters/hour-key-packaging.mjs';
 import { JsonHourKeyPackagingStore } from '../src/adapters/json-hour-key-packaging-store.mjs';
+import { SandboxProviderAdapter } from '../src/adapters/sandbox-provider.mjs';
 import { UsageExecutionLedger } from '../src/usage-ledger.mjs';
 import { MemoryClock, MemoryHoldingPort, MemoryHourKeyPackagingPort, MemoryKeyVerifier, MemoryOfferCatalog, MemoryProviderAdapter, MemoryReceiptWriter, MemoryRequestHasher } from './support/fakes.mjs';
 
@@ -314,6 +315,27 @@ test('provider failure does not consume Holding or write Receipt', async () => {
   const setup = makeRuntime();
   setup.provider.execute = async () => { throw new Error('UPSTREAM_DOWN'); };
   const result = await setup.runtime.handle({ requestId: 'req_provider_down', opaqueKey: 'kk_test_secret', userText: '帮我写一段代码', holdingId: 'holding_a', providerInput: 'hello', idempotencyKey: 'idem_provider_down' });
+  assert.equal(result.kind, 'error');
+  assert.equal(result.error.code, 'PROVIDER_UNAVAILABLE');
+  assert.equal(setup.holdings.consumeCalls, 0);
+  assert.equal(setup.receipts.appendCalls, 0);
+});
+
+test('malformed sandbox Provider result does not consume Holding or write Receipt', async () => {
+  const sandbox = new SandboxProviderAdapter({ providerId: 'provider-a', profile: 'malformed_result' });
+  const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, {
+    providers: [['provider-a', sandbox]],
+  });
+
+  const result = await setup.runtime.handle({
+    requestId: 'req_provider_malformed',
+    opaqueKey: 'kk_test_secret',
+    userText: '帮我写一段代码',
+    holdingId: 'holding_a',
+    providerInput: 'hello',
+    idempotencyKey: 'idem_provider_malformed',
+  });
+
   assert.equal(result.kind, 'error');
   assert.equal(result.error.code, 'PROVIDER_UNAVAILABLE');
   assert.equal(setup.holdings.consumeCalls, 0);
