@@ -27,6 +27,8 @@
 
 事务存储接口是 `StagingTransactionalStorePort`：只暴露 `snapshot()` 和带 fence token 的 `transact()`。当前 `StagingTransactionalStore` 是本地 adapter；真实数据库 adapter 必须在同一事务内完成 fence 校验和 mutator 提交，并通过相同契约测试后才能接入。
 
+部署目标接口是 `StagingTargetPort`：它把“目标检查、激活、健康检查、回滚”固定为可替换接缝，平台身份、凭据和部署细节留在 adapter 内。当前 `LocalStagingTarget` 只做本地 dry-run，始终报告 `networkDisabled=true`、`realStagingProof=false`；它证明目标生命周期的调用顺序和审计形状，不证明任何远程 staging。接入真实目标前，需要目标身份、制品上传/激活权限、健康检查地址、回滚权限和受保护环境审批，并复用相同端口测试记录独立证据。
+
 它使用可丢弃的 JSON Ledger 和进程内 fenced transaction model，证据等级固定为 `staging-rehearsal`，并记录 `networkDisabled=true`、`realStagingProof=false`、`productionProof=false`。这证明本项目的故障恢复和发布控制接缝，不证明云数据库、真实 staging、每个副本或生产回滚已经通过。
 
 运行：
@@ -34,6 +36,7 @@
 ```text
 npm run staging:rehearsal:verify
 npm run staging:gate:verify
+npm run staging:target:verify
 ```
 
-证据分别写入 `work/kai-hour-key-contracts/evidence/staging-rehearsal/` 和 `work/kai-hour-key-contracts/evidence/staging-gate/`，包含 JSON 指针和原始测试日志。staging-gate 场景同时记录脱敏的 `userOutcome`；完整 gate 字段只用于后台复核。两类证据都固定记录 `networkDisabled=true`、`realStagingProof=false`、`productionProof=false`；真实 staging 仍需要事务数据库、受保护环境、真实 Provider 沙盒、部署制品、健康检查、回滚权限和人工审批。
+证据分别写入 `work/kai-hour-key-contracts/evidence/staging-rehearsal/`、`work/kai-hour-key-contracts/evidence/staging-gate/` 和 `work/kai-hour-key-contracts/evidence/staging-target/`，包含 JSON 指针和原始测试日志。staging-gate 场景同时记录脱敏的 `userOutcome`；完整 gate 字段只用于后台复核。三类证据都固定记录 `networkDisabled=true`、`realStagingProof=false`、`productionProof=false`；真实 staging 仍需要事务数据库、受保护环境、真实 Provider 沙盒、部署制品、健康检查、回滚权限和人工审批。

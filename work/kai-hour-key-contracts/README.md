@@ -79,9 +79,11 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `src/adapters/json-usage-execution-ledger-store.mjs`: restart-readable local ledger store; production deployments should use a transactional execution ledger.
 - `src/staging-rehearsal.mjs`: local fenced transaction and immutable-artifact rehearsal; it is evidence for the staging seam, not a production database or deployment implementation.
 - `StagingTransactionalStorePort` in `ports/index.d.ts`: replaceable snapshot/transaction boundary for release state; the current in-memory store is only one adapter.
+- `StagingTargetPort` in `ports/index.d.ts`: replaceable deployment destination boundary for inspection, activation, health checks, and rollback; `src/adapters/local-staging-target.mjs` is a network-disabled dry-run adapter.
 - `src/release-user-result.mjs`: pure redacted projection from internal release decisions to the four user-facing states.
 - `src/staging-release-facade.mjs`: composition seam that accepts a candidate version and obtains manifest, checks, and fence internally.
 - `scripts/staging-gate-verify.mjs`: deterministic local release-gate evidence for artifact manifests, health-check decisions, automatic rollback, blocking without a verified previous artifact, and gate idempotency.
+- `scripts/staging-target-verify.mjs`: deterministic local deployment-target evidence; it records the dry-run boundary, activation, health failure, and rollback without claiming real staging.
 - `StagingReleaseFacade.preview({ version })` / `.publish({ version })`: user-facing release entry points; the system obtains manifest, checks, and fence internally, then returns only a readable status, message, version, and next action.
 - `test/contracts.test.mjs` and `test/hour-key-packaging.test.mjs`: Node's built-in test runner exercising policy, wire, packaging, restart, concurrency, and corrupt-state seams.
 - `test/runtime.test.mjs`, `test/usage-ledger.test.mjs`, and `test/support/fakes.mjs`: orchestration, recovery, idempotency, and provider-token tests.

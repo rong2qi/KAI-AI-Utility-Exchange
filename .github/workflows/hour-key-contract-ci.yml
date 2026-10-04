@@ -65,5 +65,6 @@ jobs:
             work/kai-hour-key-contracts/evidence/upstream-provider-live/
             work/kai-hour-key-contracts/evidence/staging-rehearsal/
             work/kai-hour-key-contracts/evidence/staging-gate/
+            work/kai-hour-key-contracts/evidence/staging-target/
           if-no-files-found: error
           retention-days: 30

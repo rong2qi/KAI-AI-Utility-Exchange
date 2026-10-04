@@ -1,6 +1,6 @@
 import type { AccountId, HourKeyEnvelope, Offer, UsageReceipt } from '../types/index.js';
 import type { HourKeyRuntimePort, RuntimeRequest } from '../ports/runtime.js';
-import type { HourKeyPackagingPort, HoldingPort, ProviderAdapterPort, StagingTransactionalStorePort } from '../ports/index.js';
+import type { HourKeyPackagingPort, HoldingPort, ProviderAdapterPort, StagingTargetPort, StagingTransactionalStorePort } from '../ports/index.js';
 
 const accountId: AccountId = 'acct-typecheck';
 
@@ -69,6 +69,7 @@ declare const packaging: HourKeyPackagingPort;
 declare const holding: HoldingPort;
 declare const provider: ProviderAdapterPort;
 declare const stagingStore: StagingTransactionalStorePort<{ activeVersion: string | null }>;
+declare const stagingTarget: StagingTargetPort;
 
 void runtime.handle(request);
 void packaging.package({ accountId, offer, idempotencyKey });
@@ -85,6 +86,10 @@ void stagingStore.transact({ workerId: 'worker-typecheck', epoch: 1 }, (draft) =
   draft.activeVersion = 'v-typecheck';
   return draft.activeVersion;
 });
+void stagingTarget.inspect();
+void stagingTarget.activate({ version: 'v-typecheck', digest: 'digest-typecheck' });
+void stagingTarget.healthCheck({ version: 'v-typecheck', digest: 'digest-typecheck' });
+void stagingTarget.rollback({ version: 'v-typecheck', digest: 'digest-typecheck', reason: 'typecheck' });
 
 const receiptStatus: UsageReceipt['hourKeyStatus'] = receipt.hourKeyStatus;
 void receiptStatus;

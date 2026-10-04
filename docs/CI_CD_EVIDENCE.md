@@ -10,7 +10,8 @@
 4. 执行 npm run ci:verify；
 5. 执行 `staging:rehearsal:verify`，验证 fenced transaction、重启恢复和制品摘要接缝；
 6. 执行 `staging:gate:verify`，验证制品清单、健康检查决策、自动回滚、无上一版阻断和 gate 幂等，并记录每个场景的摘要与检查结果；同时记录脱敏的用户结果投影；
-7. 上传 JSON 证据、Provider Sandbox 证据、本地 HTTP Sandbox 证据、staging rehearsal、staging gate 证据和原始测试日志。
+7. 执行 `staging:target:verify`，验证可替换部署目标的检查、激活、健康失败和回滚生命周期；当前 adapter 明确是本地 dry-run，不是远程 staging；
+8. 上传 JSON 证据、Provider Sandbox 证据、本地 HTTP Sandbox 证据、staging rehearsal、staging gate、staging target 证据和原始测试日志。
 
 npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.json。JSON 包含运行时间、Node/npm 版本、测试退出码、Git 修订（若当前目录属于 Git 仓库）以及排除生成目录后的源码 SHA-256 指纹。原始日志用于复核输出，JSON 用于机器读取。失败运行也会上传证据，避免只保留绿色结果。
 
@@ -24,7 +25,7 @@ CI 的通过结论限定为：
 
 用户验收层与内部证据分开：用户只看到 `可发布`、`已激活`、`已自动回滚` 或 `需要处理`；源码、锁文件、运行时、Provider、摘要和 gateId 由系统自动核对并保留在证据中。`可发布`只来自无副作用预检，真正写入成功后才显示 `已激活`。
 
-事务存储的当前验证针对 `StagingTransactionalStorePort` 契约和本地 adapter；它不证明任何具体云数据库。真实数据库接入必须复用相同契约测试，并单独记录事务、fence、重启和回滚证据。
+事务存储的当前验证针对 `StagingTransactionalStorePort` 契约和本地 adapter；部署目标的当前验证针对 `StagingTargetPort` 和本地 dry-run adapter。它们都不证明任何具体云数据库、云平台或真实 staging。真实接入必须复用相同契约测试，并单独记录事务、fence、制品激活、健康检查、重启和回滚证据。
 
 当前工作流已把 lint、TypeScript 类型检查和覆盖率阈值纳入通过条件。`npm audit --audit-level=high` 会同时检查运行时和开发依赖；它不是完整 SAST，仍需在安全工具和规则固定后另行接入。覆盖率阈值是合同包整体阈值，不代表每个文件都达到同一比例。
 

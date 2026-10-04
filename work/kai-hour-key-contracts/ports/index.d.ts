@@ -153,6 +153,32 @@ export interface StagingTransactionalStorePort<State extends object = Record<str
   ): Promise<Result>;
 }
 
+export interface StagingTargetArtifact {
+  readonly version: string;
+  readonly digest: string;
+}
+
+export interface StagingTargetInspection {
+  readonly targetId: string;
+  readonly networkDisabled: boolean;
+  readonly realStagingProof: boolean;
+  readonly active: StagingTargetArtifact | null;
+}
+
+export interface StagingTargetHealthCheck extends StagingTargetArtifact {
+  readonly status: 'passed' | 'failed';
+  readonly reason?: string;
+}
+
+/** Replaceable deployment destination boundary; platform credentials stay inside its adapter. */
+export interface StagingTargetPort {
+  readonly targetId: string;
+  inspect(): Promise<StagingTargetInspection>;
+  activate(artifact: StagingTargetArtifact): Promise<StagingTargetArtifact & { readonly status: 'activated' }>;
+  healthCheck(artifact: StagingTargetArtifact): Promise<StagingTargetHealthCheck>;
+  rollback(request: StagingTargetArtifact & { readonly reason: string }): Promise<StagingTargetArtifact & { readonly status: 'rolled_back'; readonly reason: string }>;
+}
+
 export interface IntentPolicyPort {
   decide(context: {
     readonly now: IsoDateTime;
