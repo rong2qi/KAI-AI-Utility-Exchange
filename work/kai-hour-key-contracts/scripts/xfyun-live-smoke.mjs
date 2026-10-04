@@ -131,11 +131,11 @@ if (unknownArguments.length > 0) {
       networkAttempted: true,
       httpResponseReceived: true,
       credentialsUsed: true,
-      providerRequestId: result.providerRequestId,
+      providerRequestIdHash: createHash('sha256').update(result.providerRequestId).digest('hex').slice(0, 16),
       usage: result.usage,
       outputContentLength: typeof result.output?.content === 'string' ? result.output.content.length : null,
     });
-    console.log(`live_smoke=passed provider_request_id=${result.providerRequestId} evidence=${evidenceFile}`);
+    console.log(`live_smoke=passed provider_request_id_hash=${createHash('sha256').update(result.providerRequestId).digest('hex').slice(0, 16)} evidence=${evidenceFile}`);
   } catch (error) {
     const credentialError = error?.code === 'PROVIDER_CREDENTIAL_REQUIRED' || error?.code === 'PROVIDER_CREDENTIAL_UNAVAILABLE';
     const evidenceFile = writeEvidence({

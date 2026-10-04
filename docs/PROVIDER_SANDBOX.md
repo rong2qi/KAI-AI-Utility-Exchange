@@ -62,6 +62,6 @@ npm run xfyun:live:smoke -- --confirm-live
 npm run xfyun:live:smoke -- --confirm-live --secret-source=env
 ```
 
-没有 `--confirm-live` 时脚本直接写入 `EXPLICIT_LIVE_CONFIRMATION_REQUIRED` 并退出，不读取密钥也不出网；未知参数也会在出网前拒绝。适配器默认 `networkMode=disabled`，只有这个入口显式使用 `networkMode=live`。带确认时只发送一条固定的 `Return exactly the word OK.` 请求，使用 `spark-x2.5`（可用 `--model=spark-x2.5-4b` 或 `--model=spark-x2.5-1.7b`），并将证据限制为状态、Provider request ID、用量和输出长度，不保存正文或密钥。一次 smoke 通过只证明该时刻、该账号和该模型的最小连通性，不能替代 staging、额度、故障恢复、数据库事务或生产回滚验收。CI 只验证 live gate 默认阻断，不自动访问讯飞。
+没有 `--confirm-live` 时脚本直接写入 `EXPLICIT_LIVE_CONFIRMATION_REQUIRED` 并退出，不读取密钥也不出网；未知参数也会在出网前拒绝。适配器默认 `networkMode=disabled`，只有这个入口显式使用 `networkMode=live`。带确认时只发送一条固定的 `Return exactly the word OK.` 请求，使用 `spark-x2.5`（可用 `--model=spark-x2.5-4b` 或 `--model=spark-x2.5-1.7b`），并将证据限制为状态、Provider request ID 的哈希、用量和输出长度，不保存正文或密钥。一次 smoke 通过只证明该时刻、该账号和该模型的最小连通性，不能替代 staging、额度、故障恢复、数据库事务或生产回滚验收。CI 只验证 live gate 默认阻断，不自动访问讯飞。
 
 讯飞文档没有声明幂等键语义，因此适配器不会宣称供应商侧 exactly-once。项目的 `UsageExecutionLedger` 只在已记录 Provider 结果时避免重复调用；要把“上游也只执行一次”升级为可证明结论，需要供应商明确的幂等支持或 staging 级别的去重代理。
