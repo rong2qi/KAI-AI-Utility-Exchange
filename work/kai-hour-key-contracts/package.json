@@ -18,6 +18,7 @@
     "http:sandbox:verify": "node scripts/local-http-sandbox-verify.mjs",
     "xfyun:contract:verify": "node scripts/xfyun-contract-verify.mjs",
     "xfyun:keychain:check": "node scripts/xfyun-keychain-check.mjs",
+    "xfyun:live:smoke": "node scripts/xfyun-live-smoke.mjs",
     "ci:verify": "node scripts/ci-verify.mjs"
   },
   "devDependencies": {
