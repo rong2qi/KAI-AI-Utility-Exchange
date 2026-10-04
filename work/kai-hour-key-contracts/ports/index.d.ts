@@ -136,6 +136,23 @@ export interface RequestHasherPort {
   hash(value: unknown): string;
 }
 
+export interface StagingFenceToken {
+  readonly workerId: string;
+  readonly epoch: number;
+}
+
+/**
+ * Atomic persistence boundary for release state. Database adapters must keep
+ * fence validation and the mutator commit in one transaction.
+ */
+export interface StagingTransactionalStorePort<State extends object = Record<string, unknown>> {
+  snapshot(): State;
+  transact<Result>(
+    token: StagingFenceToken,
+    mutator: (draft: State) => Result | Promise<Result>,
+  ): Promise<Result>;
+}
+
 export interface IntentPolicyPort {
   decide(context: {
     readonly now: IsoDateTime;

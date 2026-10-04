@@ -44,6 +44,34 @@ test('a stale staging worker cannot commit after a newer fence is acquired', asy
   assert.equal(store.snapshot().value, 'current-write');
 });
 
+test('artifact registry uses the transactional store port instead of a concrete store', async () => {
+  const fence = new StagingFence();
+  const baseStore = new StagingTransactionalStore({
+    fence,
+    initial: { artifacts: {}, activeVersion: null, history: [] },
+  });
+  let transactions = 0;
+  const store = {
+    snapshot: () => baseStore.snapshot(),
+    transact: async (token, mutator) => {
+      transactions += 1;
+      return baseStore.transact(token, mutator);
+    },
+  };
+  const registry = new StagingArtifactRegistry({ fence, store });
+  const lease = fence.acquire('port-contract-worker');
+  await registry.publish({ version: 'v-port', contents: 'artifact-port', manifest: manifestFor('v-port', 'artifact-port') }, lease);
+  assert.equal(transactions, 1);
+  assert.equal(registry.getArtifact('v-port').version, 'v-port');
+});
+
+test('artifact registry rejects an object that does not implement the transaction store port', () => {
+  assert.throws(
+    () => new StagingArtifactRegistry({ store: {} }),
+    (error) => error.code === 'TRANSACTION_STORE_REQUIRED',
+  );
+});
+
 test('artifact activation and rollback require a matching immutable digest', async () => {
   const fence = new StagingFence();
   const registry = new StagingArtifactRegistry({ fence });

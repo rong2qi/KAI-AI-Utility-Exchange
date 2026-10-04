@@ -183,10 +183,14 @@ export class StagingTransactionalStore {
 export class StagingArtifactRegistry {
   constructor({ fence, store } = {}) {
     this.fence = fence || new StagingFence();
-    this.store = store || new StagingTransactionalStore({
+    const selectedStore = store || new StagingTransactionalStore({
       fence: this.fence,
       initial: { artifacts: {}, activeVersion: null, history: [] },
     });
+    if (typeof selectedStore.snapshot !== 'function' || typeof selectedStore.transact !== 'function') {
+      throw new StagingRehearsalError('TRANSACTION_STORE_REQUIRED', 'Staging artifact registry requires a transactional store port');
+    }
+    this.store = selectedStore;
   }
 
   async publish({ version, contents, digest, manifest }, token) {

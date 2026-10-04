@@ -1,6 +1,6 @@
 import type { AccountId, HourKeyEnvelope, Offer, UsageReceipt } from '../types/index.js';
 import type { HourKeyRuntimePort, RuntimeRequest } from '../ports/runtime.js';
-import type { HourKeyPackagingPort, HoldingPort, ProviderAdapterPort } from '../ports/index.js';
+import type { HourKeyPackagingPort, HoldingPort, ProviderAdapterPort, StagingTransactionalStorePort } from '../ports/index.js';
 
 const accountId: AccountId = 'acct-typecheck';
 
@@ -68,6 +68,7 @@ declare const runtime: HourKeyRuntimePort;
 declare const packaging: HourKeyPackagingPort;
 declare const holding: HoldingPort;
 declare const provider: ProviderAdapterPort;
+declare const stagingStore: StagingTransactionalStorePort<{ activeVersion: string | null }>;
 
 void runtime.handle(request);
 void packaging.package({ accountId, offer, idempotencyKey });
@@ -78,6 +79,11 @@ void provider.execute({
   input: request.providerInput,
   requestId: request.requestId,
   idempotencyKey,
+});
+void stagingStore.snapshot().activeVersion;
+void stagingStore.transact({ workerId: 'worker-typecheck', epoch: 1 }, (draft) => {
+  draft.activeVersion = 'v-typecheck';
+  return draft.activeVersion;
 });
 
 const receiptStatus: UsageReceipt['hourKeyStatus'] = receipt.hourKeyStatus;

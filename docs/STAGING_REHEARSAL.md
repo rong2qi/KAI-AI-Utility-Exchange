@@ -25,6 +25,8 @@
 
 `StagingReleaseFacade.preview({ version })` 和 `StagingReleaseFacade.publish({ version })` 是用户入口；它们把 manifest、health checks 和 fence token 的取得封装在系统内部。`release()` 与 `releaseForUser()` 仍是内部控制器和脱敏投影，不能把内部结果当成用户操作清单。
 
+事务存储接口是 `StagingTransactionalStorePort`：只暴露 `snapshot()` 和带 fence token 的 `transact()`。当前 `StagingTransactionalStore` 是本地 adapter；真实数据库 adapter 必须在同一事务内完成 fence 校验和 mutator 提交，并通过相同契约测试后才能接入。
+
 它使用可丢弃的 JSON Ledger 和进程内 fenced transaction model，证据等级固定为 `staging-rehearsal`，并记录 `networkDisabled=true`、`realStagingProof=false`、`productionProof=false`。这证明本项目的故障恢复和发布控制接缝，不证明云数据库、真实 staging、每个副本或生产回滚已经通过。
 
 运行：

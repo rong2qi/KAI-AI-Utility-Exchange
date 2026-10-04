@@ -78,6 +78,7 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `src/usage-ledger.mjs`: resumable usage state machine; it avoids repeating recorded Provider, Holding, or Receipt steps.
 - `src/adapters/json-usage-execution-ledger-store.mjs`: restart-readable local ledger store; production deployments should use a transactional execution ledger.
 - `src/staging-rehearsal.mjs`: local fenced transaction and immutable-artifact rehearsal; it is evidence for the staging seam, not a production database or deployment implementation.
+- `StagingTransactionalStorePort` in `ports/index.d.ts`: replaceable snapshot/transaction boundary for release state; the current in-memory store is only one adapter.
 - `src/release-user-result.mjs`: pure redacted projection from internal release decisions to the four user-facing states.
 - `src/staging-release-facade.mjs`: composition seam that accepts a candidate version and obtains manifest, checks, and fence internally.
 - `scripts/staging-gate-verify.mjs`: deterministic local release-gate evidence for artifact manifests, health-check decisions, automatic rollback, blocking without a verified previous artifact, and gate idempotency.
