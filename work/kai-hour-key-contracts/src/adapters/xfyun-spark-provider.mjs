@@ -75,6 +75,7 @@ export class XfyunSparkProviderAdapter {
     providerId = 'xfyun-spark-chat',
     apiKeyResolver = () => process.env.XFYUN_API_KEY,
     fetchImpl = globalThis.fetch,
+    networkMode = 'disabled',
     timeoutMs = 15_000,
   } = {}) {
     const parsed = new URL(endpoint);
@@ -83,12 +84,14 @@ export class XfyunSparkProviderAdapter {
     }
     if (!providerId) throw new Error('XFYUN_PROVIDER_ID_REQUIRED');
     if (typeof fetchImpl !== 'function') throw new Error('XFYUN_FETCH_REQUIRED');
+    if (!['disabled', 'live'].includes(networkMode)) throw new Error('XFYUN_NETWORK_MODE_INVALID');
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('XFYUN_TIMEOUT_INVALID');
     if (typeof apiKeyResolver !== 'function') throw new Error('XFYUN_API_KEY_RESOLVER_REQUIRED');
     this.endpoint = parsed.toString();
     this.providerId = providerId;
     this.apiKeyResolver = apiKeyResolver;
     this.fetchImpl = fetchImpl;
+    this.networkMode = networkMode;
     this.timeoutMs = timeoutMs;
   }
 
@@ -96,6 +99,9 @@ export class XfyunSparkProviderAdapter {
     this.#validateRequest(request);
     if (!SUPPORTED_MODELS.includes(request.model)) {
       throw new XfyunProviderError('PROVIDER_SCOPE_UNSUPPORTED', '讯飞模型不在已声明的适配范围内');
+    }
+    if (this.networkMode === 'disabled') {
+      throw new XfyunProviderError('PROVIDER_NETWORK_DISABLED', '讯飞网络适配器默认关闭，必须由受保护入口显式启用');
     }
     let key;
     try {
@@ -119,6 +125,7 @@ export class XfyunSparkProviderAdapter {
           'content-type': 'application/json',
         },
         body,
+        redirect: 'error',
         signal: controller.signal,
       });
     } catch (error) {

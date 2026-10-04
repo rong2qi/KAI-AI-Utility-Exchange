@@ -29,6 +29,7 @@ test('maps the documented Spark request and response into the Provider port', as
   let captured;
   const adapter = new XfyunSparkProviderAdapter({
     apiKeyResolver: () => 'test-key',
+    networkMode: 'live',
     fetchImpl: async (url, options) => {
       captured = { url, options, payload: JSON.parse(options.body) };
       return response({
@@ -44,6 +45,7 @@ test('maps the documented Spark request and response into the Provider port', as
   const result = await adapter.execute(request());
   assert.equal(captured.url, XFYUN_SPARK_DEFAULT_ENDPOINT);
   assert.equal(captured.options.headers.authorization, 'Bearer test-key');
+  assert.equal(captured.options.redirect, 'error');
   assert.equal(captured.payload.model, 'spark-x2.5');
   assert.equal(captured.payload.stream, false);
   assert.deepEqual(result, {
@@ -62,6 +64,7 @@ test('resolves a key from the injected resolver without exposing it in the resul
       resolverCalls += 1;
       return 'resolver-key';
     },
+    networkMode: 'live',
     fetchImpl: async (_url, options) => {
       authorization = options.headers.authorization;
       return response({ id: 'chatcmpl-2', choices: [{ message: { content: null } }] });
@@ -96,26 +99,31 @@ test('rejects unsupported stream requests, models, and endpoints before network 
     throw new Error('network should not be called');
   };
   assert.throws(() => new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'test-key', endpoint: 'https://example.test/v1', fetchImpl }), /XFYUN_ENDPOINT_NOT_ALLOWED/);
-  const adapter = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'test-key', fetchImpl });
+  const adapter = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'test-key', fetchImpl, networkMode: 'live' });
   await assert.rejects(adapter.execute(request({ model: 'spark-unknown' })), (error) => error.code === 'PROVIDER_SCOPE_UNSUPPORTED');
   await assert.rejects(adapter.execute(request({ input: { messages: [{ role: 'user', content: 'hello' }], stream: true } })), (error) => error.code === 'REQUEST_STREAM_UNSUPPORTED');
 });
 
 test('does not turn a missing secret into a network call', async () => {
-  const adapter = new XfyunSparkProviderAdapter({ apiKeyResolver: () => undefined, fetchImpl: async () => { throw new Error('network should not be called'); } });
+  const adapter = new XfyunSparkProviderAdapter({ apiKeyResolver: () => undefined, fetchImpl: async () => { throw new Error('network should not be called'); }, networkMode: 'live' });
   await assert.rejects(adapter.execute(request()), (error) => error instanceof XfyunProviderError && error.code === 'PROVIDER_CREDENTIAL_REQUIRED');
 });
 
+test('default construction cannot reach the network until the composition root enables live mode', async () => {
+  const adapter = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'test-key' });
+  await assert.rejects(adapter.execute(request()), (error) => error.code === 'PROVIDER_NETWORK_DISABLED');
+});
+
 test('maps HTTP, business, malformed response, and timeout failures without leaking secrets', async () => {
-  const httpError = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', fetchImpl: async () => response({ message: 'do not expose' }, { status: 503 }) });
+  const httpError = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', fetchImpl: async () => response({ message: 'do not expose' }, { status: 503 }), networkMode: 'live' });
   await assert.rejects(httpError.execute(request()), (error) => error.code === 'PROVIDER_HTTP_ERROR' && error.retryable === true && !error.message.includes('secret-key'));
 
-  const businessError = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', fetchImpl: async () => response({ code: 10001, message: 'invalid key' }) });
+  const businessError = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', fetchImpl: async () => response({ code: 10001, message: 'invalid key' }), networkMode: 'live' });
   await assert.rejects(businessError.execute(request({ idempotencyKey: 'xfyun-business-1' })), (error) => error.code === 'PROVIDER_BUSINESS_ERROR' && error.retryable === false && !error.message.includes('invalid key'));
 
-  const malformed = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', fetchImpl: async () => response({ code: 0, choices: [] }) });
+  const malformed = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', fetchImpl: async () => response({ code: 0, choices: [] }), networkMode: 'live' });
   await assert.rejects(malformed.execute(request({ idempotencyKey: 'xfyun-malformed-1' })), (error) => error.code === 'PROVIDER_RESPONSE_INVALID');
 
-  const timeout = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', timeoutMs: 5, fetchImpl: async (_url, options) => new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })))) });
+  const timeout = new XfyunSparkProviderAdapter({ apiKeyResolver: () => 'secret-key', timeoutMs: 5, fetchImpl: async (_url, options) => new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })))), networkMode: 'live' });
   await assert.rejects(timeout.execute(request({ idempotencyKey: 'xfyun-timeout-1' })), (error) => error.code === 'PROVIDER_TIMEOUT' && error.retryable === true);
 });

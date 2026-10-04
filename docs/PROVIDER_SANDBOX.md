@@ -34,7 +34,7 @@ npm run provider:sandbox:verify
 
 官方接口依据是 [讯飞星火 Chat API 文档](https://maas.xfyun.cn/doc/guide/3%E3%80%81API%20%E6%8E%A5%E5%8F%A3/3.1%20%E6%98%9F%E7%81%AB%E6%A8%A1%E5%9E%8B%20API/3.1.1%20Chat.html)：请求使用 `POST /v2/chat/completions`、`Authorization: Bearer` 和 `messages`；适配器默认关闭流式输出，避免把 SSE 细节泄漏到 Runtime。
 
-密钥由适配器内部解析：本地 smoke 可使用 `XFYUN_API_KEY` 环境变量或注入一个 Keychain 读取函数。密钥不写入请求结果、错误文本、证据 JSON 或 Git。仓库只提供 `.env.example`，不提供真实值。
+密钥由适配器内部解析：调用方提供一个解析函数，受保护的 live smoke 默认使用 macOS Keychain；只有显式选择 `--secret-source=env` 才读取 `XFYUN_API_KEY`。密钥不写入请求结果、错误文本、证据 JSON 或 Git。仓库只提供 `.env.example`，不提供真实值。
 
 ### 你需要怎样把密钥交给本地适配器
 
@@ -50,16 +50,18 @@ security add-generic-password -a "$USER" -s "kai-xfyun-api-key" -w
 npm run xfyun:keychain:check
 ```
 
-看到 `keychain_status=available` 后，只需告诉我“密钥已就位”，我就可以在你明确授权后运行一次最小化 live smoke。检查命令只输出 available/missing/unavailable，绝不打印密钥。若只想临时运行，也可在当前终端设置 `export XFYUN_API_KEY='...'`，适配器默认读取该环境变量。
+看到 `keychain_status=available` 后，只需告诉我“密钥已就位”，我就可以在你明确授权后运行一次最小化 live smoke。检查命令只输出 available/missing/unavailable，绝不打印密钥。若只想临时运行，也可在当前终端设置 `export XFYUN_API_KEY='...'`，但运行时必须显式加 `--secret-source=env`。
 
 第三层合同证据可用 `npm run xfyun:contract:verify` 生成；它使用假 fetch，固定记录 `networkDisabled=true`、`credentialsUsed=false`，因此不会冒充真实供应商连通性证据。
 
-真实连通性只通过受保护的单请求入口执行：
+真实连通性只通过受保护的单请求入口执行。默认从 macOS Keychain 读取密钥；如果只在当前终端临时设置环境变量，必须明确写出 `--secret-source=env`：
 
 ```text
 npm run xfyun:live:smoke -- --confirm-live
+# 临时环境变量模式：
+npm run xfyun:live:smoke -- --confirm-live --secret-source=env
 ```
 
-没有 `--confirm-live` 时脚本直接写入 `EXPLICIT_LIVE_CONFIRMATION_REQUIRED` 并退出，不读取密钥也不出网。带确认时只发送一条固定的 `Return exactly the word OK.` 请求，使用 `spark-x2.5`（可用 `--model=spark-x2.5-4b` 或 `--model=spark-x2.5-1.7b`），并将证据限制为状态、Provider request ID、用量和输出长度，不保存正文或密钥。一次 smoke 通过只证明该时刻、该账号和该模型的最小连通性，不能替代 staging、额度、故障恢复、数据库事务或生产回滚验收。
+没有 `--confirm-live` 时脚本直接写入 `EXPLICIT_LIVE_CONFIRMATION_REQUIRED` 并退出，不读取密钥也不出网；未知参数也会在出网前拒绝。适配器默认 `networkMode=disabled`，只有这个入口显式使用 `networkMode=live`。带确认时只发送一条固定的 `Return exactly the word OK.` 请求，使用 `spark-x2.5`（可用 `--model=spark-x2.5-4b` 或 `--model=spark-x2.5-1.7b`），并将证据限制为状态、Provider request ID、用量和输出长度，不保存正文或密钥。一次 smoke 通过只证明该时刻、该账号和该模型的最小连通性，不能替代 staging、额度、故障恢复、数据库事务或生产回滚验收。CI 只验证 live gate 默认阻断，不自动访问讯飞。
 
 讯飞文档没有声明幂等键语义，因此适配器不会宣称供应商侧 exactly-once。项目的 `UsageExecutionLedger` 只在已记录 Provider 结果时避免重复调用；要把“上游也只执行一次”升级为可证明结论，需要供应商明确的幂等支持或 staging 级别的去重代理。
