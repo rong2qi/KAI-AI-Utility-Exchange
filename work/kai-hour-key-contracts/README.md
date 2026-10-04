@@ -84,6 +84,9 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `src/staging-release-facade.mjs`: composition seam that accepts a candidate version and obtains manifest, checks, and fence internally.
 - `scripts/staging-gate-verify.mjs`: deterministic local release-gate evidence for artifact manifests, health-check decisions, automatic rollback, blocking without a verified previous artifact, and gate idempotency.
 - `scripts/staging-target-verify.mjs`: deterministic local deployment-target evidence; it records the dry-run boundary, activation, health failure, and rollback without claiming real staging.
+- `src/staging-service.mjs` / `scripts/staging-service.mjs`: loopback-only runtime entry exposing `/healthz` and `/version` from an immutable release manifest.
+- `src/staging-artifact-slots.mjs`: local two-slot release store retaining current and previous immutable artifacts with digest verification and rollback.
+- `scripts/staging-runtime-verify.mjs`: local runtime evidence joining version reporting, health checks, and two-slot rollback.
 - `StagingReleaseFacade.preview({ version })` / `.publish({ version })`: user-facing release entry points; the system obtains manifest, checks, and fence internally, then returns only a readable status, message, version, and next action.
 - `test/contracts.test.mjs` and `test/hour-key-packaging.test.mjs`: Node's built-in test runner exercising policy, wire, packaging, restart, concurrency, and corrupt-state seams.
 - `test/runtime.test.mjs`, `test/usage-ledger.test.mjs`, and `test/support/fakes.mjs`: orchestration, recovery, idempotency, and provider-token tests.

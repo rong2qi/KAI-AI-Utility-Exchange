@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "security:audit": "npm audit --audit-level=high",
-    "quality:verify": "npm run lint && npm run typecheck && npm run test:coverage && npm run provider:sandbox:verify && npm run http:sandbox:verify && npm run xfyun:contract:verify && npm run staging:rehearsal:verify && npm run staging:gate:verify && npm run staging:target:verify && npm run security:audit",
+    "quality:verify": "npm run lint && npm run typecheck && npm run test:coverage && npm run provider:sandbox:verify && npm run http:sandbox:verify && npm run xfyun:contract:verify && npm run staging:rehearsal:verify && npm run staging:gate:verify && npm run staging:target:verify && npm run staging:runtime:verify && npm run security:audit",
     "provider:sandbox:verify": "node scripts/provider-sandbox-verify.mjs",
     "http:sandbox:verify": "node scripts/local-http-sandbox-verify.mjs",
     "xfyun:contract:verify": "node scripts/xfyun-contract-verify.mjs",
@@ -22,6 +22,7 @@
     "staging:rehearsal:verify": "node scripts/staging-rehearsal-verify.mjs",
     "staging:gate:verify": "node scripts/staging-gate-verify.mjs",
     "staging:target:verify": "node scripts/staging-target-verify.mjs",
+    "staging:runtime:verify": "node scripts/staging-runtime-verify.mjs",
     "ci:verify": "node scripts/ci-verify.mjs"
   },
   "devDependencies": {

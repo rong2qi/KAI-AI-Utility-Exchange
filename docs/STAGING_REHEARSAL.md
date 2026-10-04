@@ -37,6 +37,7 @@
 npm run staging:rehearsal:verify
 npm run staging:gate:verify
 npm run staging:target:verify
+npm run staging:runtime:verify
 ```
 
-证据分别写入 `work/kai-hour-key-contracts/evidence/staging-rehearsal/`、`work/kai-hour-key-contracts/evidence/staging-gate/` 和 `work/kai-hour-key-contracts/evidence/staging-target/`，包含 JSON 指针和原始测试日志。staging-gate 场景同时记录脱敏的 `userOutcome`；完整 gate 字段只用于后台复核。三类证据都固定记录 `networkDisabled=true`、`realStagingProof=false`、`productionProof=false`；真实 staging 仍需要事务数据库、受保护环境、真实 Provider 沙盒、部署制品、健康检查、回滚权限和人工审批。
+`staging:runtime:verify` 另外验证本地 loopback 服务能报告当前版本和摘要，且双制品槽位回滚后恢复上一版本。所有本地证据都固定记录 `networkDisabled=true`、`realStagingProof=false`、`productionProof=false`；真实 staging 仍需要事务数据库、受保护环境、真实 Provider 沙盒、部署制品、健康检查、回滚权限和人工审批。
