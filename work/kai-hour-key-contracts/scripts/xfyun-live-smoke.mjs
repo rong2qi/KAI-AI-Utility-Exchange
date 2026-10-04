@@ -48,9 +48,9 @@ const baseEvidence = {
   provider: 'xfyun-spark-chat',
   endpoint: XFYUN_SPARK_DEFAULT_ENDPOINT,
   model,
-  requestCount: 1,
+  requestCount: 0,
   assuranceLevel: 'live-smoke',
-  proves: ['单次最小请求在某时刻到达讯飞并得到有效响应'],
+  claim: '单次最小请求在某时刻到达讯飞并得到有效响应',
   doesNotProve: ['生产可用性', 'staging 事务与回滚', '额度持续可用性', '供应商 exactly-once 幂等'],
   upstreamIdempotency: 'unsupported',
   retryCount: 0,
@@ -62,48 +62,49 @@ const baseEvidence = {
   codeVersion: process.env.GITHUB_SHA || null,
 };
 
+const outcome = (status, details = {}) => ({
+  ...baseEvidence,
+  status,
+  claimStatus: status === 'passed' ? 'proven' : status === 'failed' ? 'failed' : 'blocked',
+  proves: status === 'passed' ? [baseEvidence.claim] : [],
+  notProven: status === 'passed' ? [] : [baseEvidence.claim],
+  ...details,
+});
+
 if (unknownArguments.length > 0) {
-  const evidenceFile = writeEvidence({
-    ...baseEvidence,
-    status: 'failed',
+  const evidenceFile = writeEvidence(outcome('failed', {
     networkAttempted: false,
     httpResponseReceived: false,
     credentialsUsed: false,
     reason: 'UNKNOWN_ARGUMENT',
-  });
+  }));
   console.error(`live_smoke=failed evidence=${evidenceFile}`);
   process.exitCode = 1;
 } else if (!['keychain', 'env'].includes(secretSource)) {
-  const evidenceFile = writeEvidence({
-    ...baseEvidence,
-    status: 'failed',
+  const evidenceFile = writeEvidence(outcome('failed', {
     networkAttempted: false,
     httpResponseReceived: false,
     credentialsUsed: false,
     reason: 'SECRET_SOURCE_NOT_ALLOWED',
-  });
+  }));
   console.error(`live_smoke=failed evidence=${evidenceFile}`);
   process.exitCode = 1;
 } else if (!args.has('--confirm-live')) {
-  const evidenceFile = writeEvidence({
-    ...baseEvidence,
-    status: 'blocked',
+  const evidenceFile = writeEvidence(outcome('blocked', {
     networkAttempted: false,
     httpResponseReceived: false,
     credentialsUsed: false,
     reason: 'EXPLICIT_LIVE_CONFIRMATION_REQUIRED',
-  });
+  }));
   console.error(`live_smoke=blocked evidence=${evidenceFile}`);
   process.exitCode = 2;
 } else if (!XFYUN_SPARK_SUPPORTED_MODELS.includes(model)) {
-  const evidenceFile = writeEvidence({
-    ...baseEvidence,
-    status: 'failed',
+  const evidenceFile = writeEvidence(outcome('failed', {
     networkAttempted: false,
     httpResponseReceived: false,
     credentialsUsed: false,
     reason: 'MODEL_NOT_SUPPORTED',
-  });
+  }));
   console.error(`live_smoke=failed evidence=${evidenceFile}`);
   process.exitCode = 1;
 } else {
@@ -125,27 +126,25 @@ if (unknownArguments.length > 0) {
       requestId,
       idempotencyKey,
     });
-    const evidenceFile = writeEvidence({
-      ...baseEvidence,
-      status: 'passed',
+    const evidenceFile = writeEvidence(outcome('passed', {
+      requestCount: 1,
       networkAttempted: true,
       httpResponseReceived: true,
       credentialsUsed: true,
       providerRequestIdHash: createHash('sha256').update(result.providerRequestId).digest('hex').slice(0, 16),
       usage: result.usage,
       outputContentLength: typeof result.output?.content === 'string' ? result.output.content.length : null,
-    });
+    }));
     console.log(`live_smoke=passed provider_request_id_hash=${createHash('sha256').update(result.providerRequestId).digest('hex').slice(0, 16)} evidence=${evidenceFile}`);
   } catch (error) {
     const credentialError = error?.code === 'PROVIDER_CREDENTIAL_REQUIRED' || error?.code === 'PROVIDER_CREDENTIAL_UNAVAILABLE';
-    const evidenceFile = writeEvidence({
-      ...baseEvidence,
-      status: credentialError ? 'blocked' : 'failed',
+    const evidenceFile = writeEvidence(outcome(credentialError ? 'blocked' : 'failed', {
+      requestCount: credentialError ? 0 : 1,
       networkAttempted: !credentialError,
       httpResponseReceived: Number.isInteger(error?.status),
       credentialsUsed: !credentialError,
       error: { code: error?.code || 'UNKNOWN', retryable: error?.retryable === true, status: error?.status ?? null },
-    });
+    }));
     console.error(`live_smoke=${credentialError ? 'blocked' : 'failed'} code=${error?.code || 'UNKNOWN'} evidence=${evidenceFile}`);
     process.exitCode = credentialError ? 2 : 1;
   }
