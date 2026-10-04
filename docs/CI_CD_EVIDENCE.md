@@ -9,7 +9,7 @@
 3. 执行 `npm run quality:verify`，包含 ESLint、TypeScript 声明检查、Node 覆盖率门槛（行 90%、分支 75%、函数 90%）、`internal-provider-sandbox`、`local-http-sandbox` 验证和生产依赖安全审计，并保留 `quality.log`；
 4. 执行 npm run ci:verify；
 5. 执行 `staging:rehearsal:verify`，验证 fenced transaction、重启恢复和制品摘要接缝；
-6. 执行 `staging:gate:verify`，验证制品清单、健康检查决策、自动回滚、无上一版阻断和 gate 幂等，并记录每个场景的摘要与检查结果；
+6. 执行 `staging:gate:verify`，验证制品清单、健康检查决策、自动回滚、无上一版阻断和 gate 幂等，并记录每个场景的摘要与检查结果；同时记录脱敏的用户结果投影；
 7. 上传 JSON 证据、Provider Sandbox 证据、本地 HTTP Sandbox 证据、staging rehearsal、staging gate 证据和原始测试日志。
 
 npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.json。JSON 包含运行时间、Node/npm 版本、测试退出码、Git 修订（若当前目录属于 Git 仓库）以及排除生成目录后的源码 SHA-256 指纹。原始日志用于复核输出，JSON 用于机器读取。失败运行也会上传证据，避免只保留绿色结果。
@@ -21,6 +21,8 @@ CI 的通过结论限定为：
 > 在触发工作流的源码修订、Node 22 和 Node 24 矩阵、锁定依赖和 Ubuntu runner 上，npm test 返回退出码 0。
 
 它不等同于真实 Provider、持久化存储、交易执行或生产部署已经通过。`staging-rehearsal` 和 `staging-gate-rehearsal` 都只是本地故障、发布门禁和回滚接缝演练，不等同于真实 staging。当前工作空间没有真实部署目标，也没有可验证的远端 CI 运行记录；本地运行产生的证据只能证明本地源码状态。`engines` 声明 Node 22 至 Node 24 的支持范围，矩阵用于验证最低和当前支持版本。
+
+用户验收层与内部证据分开：用户只看到 `可发布`、`已激活`、`已自动回滚` 或 `需要处理`；源码、锁文件、运行时、Provider、摘要和 gateId 由系统自动核对并保留在证据中。`可发布`只来自无副作用预检，真正写入成功后才显示 `已激活`。
 
 当前工作流已把 lint、TypeScript 类型检查和覆盖率阈值纳入通过条件。`npm audit --audit-level=high` 会同时检查运行时和开发依赖；它不是完整 SAST，仍需在安全工具和规则固定后另行接入。覆盖率阈值是合同包整体阈值，不代表每个文件都达到同一比例。
 

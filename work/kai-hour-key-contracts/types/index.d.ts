@@ -10,6 +10,26 @@ export type ModelId = string;
 export type RegionId = string;
 export type ScopeEpoch = number;
 
+/** User-facing projection of a release result; technical gate fields remain in audit evidence. */
+export type ReleaseUserStatus = 'ready' | 'activated' | 'rolled_back' | 'needs_attention';
+export type ReleaseUserAction =
+  | 'approve_release'
+  | 'review_checks'
+  | 'fix_checks_and_publish_again'
+  | 'rebuild_and_publish'
+  | 'review_checks_and_publish_again'
+  | 'retry_release';
+
+export interface ReleaseUserResult {
+  readonly status: ReleaseUserStatus;
+  readonly label: '可发布' | '已激活' | '已自动回滚' | '需要处理';
+  readonly message: string;
+  readonly version?: string;
+  readonly restoredVersion?: string;
+  readonly actionRequired: boolean;
+  readonly nextAction?: ReleaseUserAction;
+}
+
 export type IntentKind = 'compute' | 'discovery' | 'lock' | 'receipt' | 'ambiguous';
 export type ComputeCapability = 'compute';
 export type DiscoveryCapability = 'discovery.read';

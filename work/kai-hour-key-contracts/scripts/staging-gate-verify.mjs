@@ -11,6 +11,7 @@ import {
   StagingFence,
   artifactDigest,
 } from '../src/staging-rehearsal.mjs';
+import { toUserFacingReleaseResult } from '../src/release-user-result.mjs';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const evidenceDirectory = resolve(packageRoot, 'evidence/staging-gate');
@@ -75,14 +76,14 @@ try {
     ],
     token,
   });
-  scenarios.push({ name: 'required_checks_pass_activate', decision: activation.decision, gateId: activation.gateId, manifest: activation.manifest, checks: activation.checks, candidateDigest: activation.digest, activeDigest: activation.digest, previousDigest: null });
+  scenarios.push({ name: 'required_checks_pass_activate', decision: activation.decision, userOutcome: toUserFacingReleaseResult(activation), gateId: activation.gateId, manifest: activation.manifest, checks: activation.checks, candidateDigest: activation.digest, activeDigest: activation.digest, previousDigest: null });
 
   const rollback = await controller.release({
     manifest: v2.manifest,
     checks: [{ name: 'startup', status: 'passed', required: true }, { name: 'contract', status: 'failed', required: true, detail: 'contract mismatch' }],
     token,
   });
-  scenarios.push({ name: 'required_check_failed_rollback', decision: rollback.decision, reasonCode: rollback.reasonCode, gateId: rollback.gateId, manifest: rollback.manifest, checks: rollback.checks, candidateDigest: rollback.manifest.artifactSha256, activeDigest: rollback.rollbackTo.digest, previousDigest: rollback.rollbackTo.digest });
+  scenarios.push({ name: 'required_check_failed_rollback', decision: rollback.decision, userOutcome: toUserFacingReleaseResult(rollback), reasonCode: rollback.reasonCode, gateId: rollback.gateId, manifest: rollback.manifest, checks: rollback.checks, candidateDigest: rollback.manifest.artifactSha256, activeDigest: rollback.rollbackTo.digest, previousDigest: rollback.rollbackTo.digest });
 
   const emptyFence = new StagingFence();
   const emptyRegistry = new StagingArtifactRegistry({ fence: emptyFence });
@@ -94,7 +95,7 @@ try {
     checks: [{ name: 'startup', status: 'failed', required: true }],
     token: emptyToken,
   });
-  scenarios.push({ name: 'failed_check_without_previous_blocks', decision: blocked.decision, reasonCode: blocked.reasonCode, gateId: blocked.gateId, manifest: blocked.manifest, checks: blocked.checks, candidateDigest: blocked.manifest.artifactSha256, activeDigest: null, previousDigest: null });
+  scenarios.push({ name: 'failed_check_without_previous_blocks', decision: blocked.decision, userOutcome: toUserFacingReleaseResult(blocked), reasonCode: blocked.reasonCode, gateId: blocked.gateId, manifest: blocked.manifest, checks: blocked.checks, candidateDigest: blocked.manifest.artifactSha256, activeDigest: null, previousDigest: null });
 } catch (caught) {
   status = 'failed';
   error = { name: caught.name, code: caught.code || null, message: caught.message };

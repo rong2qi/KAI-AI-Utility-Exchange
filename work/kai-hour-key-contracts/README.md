@@ -78,7 +78,10 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `src/usage-ledger.mjs`: resumable usage state machine; it avoids repeating recorded Provider, Holding, or Receipt steps.
 - `src/adapters/json-usage-execution-ledger-store.mjs`: restart-readable local ledger store; production deployments should use a transactional execution ledger.
 - `src/staging-rehearsal.mjs`: local fenced transaction and immutable-artifact rehearsal; it is evidence for the staging seam, not a production database or deployment implementation.
+- `src/release-user-result.mjs`: pure redacted projection from internal release decisions to the four user-facing states.
+- `src/staging-release-facade.mjs`: composition seam that accepts a candidate version and obtains manifest, checks, and fence internally.
 - `scripts/staging-gate-verify.mjs`: deterministic local release-gate evidence for artifact manifests, health-check decisions, automatic rollback, blocking without a verified previous artifact, and gate idempotency.
+- `StagingReleaseFacade.preview({ version })` / `.publish({ version })`: user-facing release entry points; the system obtains manifest, checks, and fence internally, then returns only a readable status, message, version, and next action.
 - `test/contracts.test.mjs` and `test/hour-key-packaging.test.mjs`: Node's built-in test runner exercising policy, wire, packaging, restart, concurrency, and corrupt-state seams.
 - `test/runtime.test.mjs`, `test/usage-ledger.test.mjs`, and `test/support/fakes.mjs`: orchestration, recovery, idempotency, and provider-token tests.
 
@@ -98,6 +101,8 @@ npm run ci:verify -- --output-dir evidence/ci
 The verifier writes a machine-readable JSON record, the raw test log, and a LATEST.json pointer under evidence/ci/. The record includes the test exit code, runtime versions, and a SHA-256 fingerprint of the source files. The workspace-level CI/CD evidence policy is documented in ../../docs/CI_CD_EVIDENCE.md.
 
 Deployment adapters should be added behind these stable contracts. A real provider key must be injected through a secret manager or local environment; it must never be committed into this directory. Each adapter must document its authoritative source, failure behavior, and acceptance evidence.
+
+Release execution keeps two views separate. The internal `release()` result is used for audit and evidence; `StagingReleaseFacade` returns `可发布`, `已激活`, `已自动回滚`, or `需要处理` so callers do not need to inspect source commits, lockfile digests, runtime ranges, Provider models, or gate IDs. `可发布` is side-effect-free preflight; an executed activation remains `已激活`.
 
 Market truth and KAI packaging are separate facts. `executionEligible` describes whether the source Offer is a current execution candidate; `hourKeyStatus` describes whether KAI has wrapped that Offer as a KAI Hour Key. An Offer can therefore be real and execution-eligible while still being `unpackaged`; account scope, the selected Grant, Holding resource scope, both Offer/Holding time windows, and provider policy remain runtime checks before execution.
 

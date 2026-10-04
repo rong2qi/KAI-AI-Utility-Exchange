@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { toUserFacingReleaseResult, userRetryResult } from './release-user-result.mjs';
+
+export { toUserFacingReleaseResult } from './release-user-result.mjs';
 
 const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 
@@ -281,5 +284,32 @@ export class StagingDeploymentController {
     await this.registry.activate({ version: candidate.version, digest: candidate.digest, gateId: gate.gateId, result }, token);
     this.results.set(gate.gateId, result);
     return clone(result);
+  }
+
+  async previewForUser(input = {}) {
+    try {
+      const normalizedManifest = normalizeArtifactManifest(input.manifest);
+      const normalizedChecks = normalizeHealthChecks(input.checks);
+      const snapshot = this.registry.snapshot();
+      const previousKnownGood = snapshot.activeVersion ? this.registry.getArtifact(snapshot.activeVersion) : null;
+      const gatePrevious = snapshot.activeVersion === normalizedManifest.version ? null : previousKnownGood;
+      const gate = evaluateHealthGate({ manifest: normalizedManifest, checks: normalizedChecks, previousKnownGood: gatePrevious });
+      const candidate = this.registry.getArtifact(normalizedManifest.version);
+      if (!candidate || canonicalJson(candidate.manifest) !== canonicalJson(normalizedManifest) || candidate.digest !== normalizedManifest.artifactSha256) {
+        return toUserFacingReleaseResult({ decision: 'blocked', reasonCode: 'MANIFEST_MISMATCH' });
+      }
+      if (gate.decision === 'activate') return toUserFacingReleaseResult({ decision: 'ready', version: candidate.version });
+      return toUserFacingReleaseResult(gate);
+    } catch {
+      return userRetryResult();
+    }
+  }
+
+  async releaseForUser(input = {}) {
+    try {
+      return toUserFacingReleaseResult(await this.release(input));
+    } catch {
+      return userRetryResult();
+    }
   }
 }

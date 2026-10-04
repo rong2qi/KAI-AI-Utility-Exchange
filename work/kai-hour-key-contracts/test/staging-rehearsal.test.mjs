@@ -10,6 +10,8 @@ import {
   StagingTransactionalStore,
   artifactDigest,
 } from '../src/staging-rehearsal.mjs';
+import { StagingReleaseFacade } from '../src/staging-release-facade.mjs';
+import { toUserFacingReleaseResult as toPublicReleaseResult } from '../src/release-user-result.mjs';
 import { UsageExecutionLedger } from '../src/usage-ledger.mjs';
 
 const manifestFor = (version, contents, overrides = {}) => ({
@@ -83,6 +85,169 @@ test('release gate activates a manifest-backed artifact after required checks pa
   assert.equal(registry.snapshot().activeVersion, 'v2');
   assert.equal(registry.snapshot().history.at(-1).action, 'activate');
   assert.equal(registry.snapshot().history.at(-1).gateId, result.gateId);
+});
+
+test('user release result exposes a compact activated status without gate internals', async () => {
+  const fence = new StagingFence();
+  const registry = new StagingArtifactRegistry({ fence });
+  const controller = new StagingDeploymentController({ registry });
+  const lease = fence.acquire('release-controller');
+  const manifest = manifestFor('v-user', 'artifact-user');
+  await registry.publish({ version: 'v-user', contents: 'artifact-user', manifest }, lease);
+
+  const result = await controller.releaseForUser({
+    manifest,
+    checks: [{ name: 'startup', status: 'passed', required: true }],
+    token: lease,
+  });
+
+  assert.deepEqual(result, {
+    status: 'activated',
+    label: '已激活',
+    message: '版本已完成检查并启用。',
+    version: 'v-user',
+    actionRequired: false,
+  });
+  assert.equal('gateId' in result, false);
+  assert.equal('checks' in result, false);
+  assert.equal('digest' in result, false);
+});
+
+test('user release result maps rollback and blocked outcomes to actionable language', () => {
+  assert.deepEqual(toPublicReleaseResult({
+    decision: 'rollback',
+    rollbackTo: { version: 'v1', digest: 'd'.repeat(64) },
+    reasonCode: 'REQUIRED_HEALTH_CHECK_FAILED',
+  }), {
+    status: 'rolled_back',
+    label: '已自动回滚',
+    message: '新版本检查未通过，系统已恢复上一版本。',
+    restoredVersion: 'v1',
+    actionRequired: false,
+    nextAction: 'review_checks',
+  });
+  assert.deepEqual(toPublicReleaseResult({
+    decision: 'blocked',
+    reasonCode: 'NO_VERIFIED_PREVIOUS_ARTIFACT',
+  }), {
+    status: 'needs_attention',
+    label: '需要处理',
+    message: '检查未通过，当前没有可恢复的上一版本。',
+    actionRequired: true,
+    nextAction: 'fix_checks_and_publish_again',
+  });
+});
+
+test('user preview reports ready without activating or writing history', async () => {
+  const fence = new StagingFence();
+  const registry = new StagingArtifactRegistry({ fence });
+  const controller = new StagingDeploymentController({ registry });
+  const lease = fence.acquire('release-controller');
+  const manifest = manifestFor('v-preview', 'artifact-preview');
+  await registry.publish({ version: 'v-preview', contents: 'artifact-preview', manifest }, lease);
+
+  const result = await controller.previewForUser({
+    manifest,
+    checks: [{ name: 'startup', status: 'passed', required: true }],
+    token: lease,
+  });
+
+  assert.deepEqual(result, {
+    status: 'ready',
+    label: '可发布',
+    message: '版本已通过检查，可以发布。',
+    version: 'v-preview',
+    actionRequired: true,
+    nextAction: 'approve_release',
+  });
+  assert.equal(registry.snapshot().activeVersion, null);
+  assert.equal(registry.snapshot().history.length, 0);
+});
+
+test('release facade accepts only a candidate version and assembles internal inputs automatically', async () => {
+  const fence = new StagingFence();
+  const registry = new StagingArtifactRegistry({ fence });
+  const controller = new StagingDeploymentController({ registry });
+  const lease = fence.acquire('release-controller');
+  const manifest = manifestFor('v-facade', 'artifact-facade');
+  await registry.publish({ version: 'v-facade', contents: 'artifact-facade', manifest }, lease);
+  const calls = [];
+  const facade = new StagingReleaseFacade({
+    controller,
+    getCandidate: async (version) => {
+      calls.push(['candidate', version]);
+      return registry.getArtifact(version);
+    },
+    runHealthChecks: async ({ candidate }) => {
+      calls.push(['health', candidate.version]);
+      return [{ name: 'startup', status: 'passed', required: true }];
+    },
+    acquireToken: async () => {
+      calls.push(['token']);
+      return lease;
+    },
+  });
+
+  const preview = await facade.preview({ version: 'v-facade' });
+  assert.equal(preview.status, 'ready');
+  assert.deepEqual(calls, [['candidate', 'v-facade'], ['health', 'v-facade']]);
+  calls.length = 0;
+  const result = await facade.publish({ version: 'v-facade' });
+
+  assert.deepEqual(result, {
+    status: 'activated',
+    label: '已激活',
+    message: '版本已完成检查并启用。',
+    version: 'v-facade',
+    actionRequired: false,
+  });
+  assert.deepEqual(calls, [['candidate', 'v-facade'], ['health', 'v-facade'], ['token']]);
+});
+
+test('release facade hides ordinary loader failures from the user result', async () => {
+  const facade = new StagingReleaseFacade({
+    controller: {
+      releaseForUser: async () => { throw new Error('internal loader secret'); },
+      previewForUser: async () => { throw new Error('internal loader secret'); },
+    },
+    getCandidate: async () => { throw new Error('internal loader secret'); },
+    runHealthChecks: async () => [],
+    acquireToken: async () => undefined,
+  });
+
+  const result = await facade.publish({ version: 'v-failure' });
+
+  assert.deepEqual(result, {
+    status: 'needs_attention',
+    label: '需要处理',
+    message: '发布状态暂时无法确认，请修正后重试。',
+    actionRequired: true,
+    nextAction: 'retry_release',
+  });
+  assert.equal(result.message.includes('internal'), false);
+});
+
+test('user release result hides internal validation errors behind a retry action', async () => {
+  const fence = new StagingFence();
+  const registry = new StagingArtifactRegistry({ fence });
+  const controller = new StagingDeploymentController({ registry });
+  const lease = fence.acquire('release-controller');
+
+  const result = await controller.releaseForUser({
+    manifest: {},
+    checks: [{ name: 'startup', status: 'passed', required: true }],
+    token: lease,
+  });
+
+  assert.deepEqual(result, {
+    status: 'needs_attention',
+    label: '需要处理',
+    message: '发布状态暂时无法确认，请修正后重试。',
+    actionRequired: true,
+    nextAction: 'retry_release',
+  });
+  assert.equal('code' in result, false);
+  assert.equal('stack' in result, false);
 });
 
 test('failed required health check automatically rolls back to the verified previous artifact', async () => {
