@@ -166,6 +166,13 @@ test('maps aborts to a retryable timeout and rejects malformed SSE or missing us
   }), { timeoutMs: 5 });
   await assert.rejects(timeout.execute(request({ idempotencyKey: 'dahono-timeout-1' })), (error) => error.code === 'PROVIDER_TIMEOUT' && error.retryable === true);
 
+  const hangingStream = adapterWith(async () => ({
+    status: 200,
+    headers: new Headers({ 'content-type': 'text/event-stream', ...diagnostics }),
+    body: { [Symbol.asyncIterator]() { return { next: async () => new Promise(() => {}) }; } },
+  }), { timeoutMs: 5 });
+  await assert.rejects(hangingStream.execute(request({ idempotencyKey: 'dahono-timeout-stream-1' })), (error) => error.code === 'PROVIDER_TIMEOUT' && error.retryable === true);
+
   const malformed = adapterWith(async () => new Response('data: {"id":"x","choices":[]}\n\n', {
     status: 200,
     headers: { 'content-type': 'text/event-stream', ...diagnostics },
