@@ -341,7 +341,8 @@ export class DahonoRouterProviderAdapter {
       clearTimeout(timer);
       throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono 响应结构无效');
     }
-    if (!response.ok) {
+    const responseOk = response.ok ?? (response.status >= 200 && response.status < 300);
+    if (!responseOk) {
       const upstreamCode = response.status === 403
         ? await readSafeErrorCode(response, this.maxResponseBytes, controller.signal)
         : undefined;
