@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "kai-staging-github-evidence.v1",
+  "status": "passed",
+  "commit": "869c64c3df28815b1e338c78a266cd961e926e10",
+  "contractCi": {
+    "runId": 37254995931,
+    "status": "success",
+    "tests": 117,
+    "evidenceUploaded": true
+  },
+  "stagingDeploy": {
+    "runId": 37254995986,
+    "runAttempt": 3,
+    "deploymentId": 6850062588,
+    "environment": "staging",
+    "approval": "rong2qi",
+    "status": "success",
+    "version": "sha-869c64c3df28815b1e338c78a266cd961e926e10",
+    "digest": "fb6ed8ada4305d8b25041725390734eca758f50b6ef36661c1cfe66f4ca5fe7a"
+  },
+  "remoteChecks": {
+    "healthAndVersionDigestMatch": true,
+    "serviceActive": true,
+    "sharedProductionHostIsolated": true,
+    "currentPreviousSlotsReported": true
+  }
+}
