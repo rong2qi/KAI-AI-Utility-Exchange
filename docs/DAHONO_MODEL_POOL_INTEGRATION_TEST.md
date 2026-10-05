@@ -54,6 +54,8 @@ npm run dahono:live:smoke -- --confirm-live
 
 未显式带 `--confirm-live` 时不会读取密钥或出网，并以 `blocked` 证据结束。live smoke 只保存请求次数、Provider 请求 ID 哈希、用量、诊断头和输出长度；它不保存密钥或模型正文，也不替代并发、限流、事务存储和回滚验证。
 
+如果密钥已经写入 GitHub `staging` Environment，使用仓库中的 **KAI Dahono live smoke** 手动工作流即可执行同一入口；工作流仍需要 `staging` 环境审批，且不会随 push 自动运行。
+
 Provider 没有被确认提供上游幂等语义，因此 evidence 记录 `upstreamIdempotency=unsupported`；有效的一次性重试仍由现有 Usage Execution Ledger 的 request hash/idempotency 负责。
 
 ## 验收边界
