@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { JsonUsageExecutionLedgerStore } from '../src/adapters/json-usage-execution-ledger-store.mjs';
@@ -405,7 +406,7 @@ test('a superseded fence cannot write an automatic rollback', async () => {
 });
 
 test('restart recovery reuses the recorded Provider result exactly once', async () => {
-  const directory = await mkdtemp(join('/private/tmp', 'kai-staging-rehearsal-'));
+  const directory = await mkdtemp(join(tmpdir(), 'kai-staging-rehearsal-'));
   try {
     const storePath = join(directory, 'ledger.json');
     let providerCalls = 0;

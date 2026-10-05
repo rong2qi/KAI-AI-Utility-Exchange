@@ -4,7 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'work/kai-hour-key-contracts/**'
+      - 'work/kai-hour-key-contracts/package.json'
+      - 'work/kai-hour-key-contracts/package-lock.json'
+      - 'work/kai-hour-key-contracts/src/staging-service.mjs'
+      - 'work/kai-hour-key-contracts/scripts/staging-service.mjs'
+      - 'work/kai-hour-key-contracts/scripts/staging-bundle.mjs'
+      - 'work/kai-hour-key-contracts/ops/staging/**'
       - '.github/workflows/kai-hour-key-staging-deploy.yml'
   workflow_dispatch:
 
