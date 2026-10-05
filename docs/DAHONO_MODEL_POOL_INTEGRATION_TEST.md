@@ -13,6 +13,8 @@
 
 页面当前返回“当前时间不在组织预约窗口”，Playground 和 Agent 检查均未执行实际模型推理。直接请求也返回 `403_OUTSIDE_RESERVED_WINDOW`。预约属于计费和外部副作用；在没有明确预约授权前不点击 Reserve，也不把页面展示的 demo key 写入仓库或证据。
 
+这次守卫检查的机器证据在 `work/kai-hour-key-contracts/evidence/dahono-provider/guard-20261005.json`；它证明入口可达且窗口保护生效，不把 403 误判为 Provider 已可用。
+
 ## 60 分钟执行顺序
 
 | 时间 | 测试 | 通过条件 | 证据 |

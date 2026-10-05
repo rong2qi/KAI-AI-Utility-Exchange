@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "kai-dahono-provider-evidence.v1",
+  "status": "passed",
+  "level": "allocation-window-guard",
+  "source": "provider-documentation-and-demo-portal",
+  "endpoint": "https://kai.dahono.com/v1/chat/completions",
+  "model": "deepseek-v4.1-flash",
+  "networkAttempted": true,
+  "httpResponseReceived": true,
+  "credentialsUsed": false,
+  "request": {
+    "method": "POST",
+    "stream": false,
+    "messages": 1
+  },
+  "response": {
+    "statusCode": 403,
+    "errorCode": "403_OUTSIDE_RESERVED_WINDOW",
+    "classification": "allocation_window_closed",
+    "retryable": false
+  },
+  "portalChecks": {
+    "playground": "blocked_by_reserved_window",
+    "capacity_dispatch": "blocked_by_reserved_window",
+    "concurrency_envelope": "blocked_by_reserved_window",
+    "agent_evaluations": "blocked_by_reserved_window"
+  },
+  "doesNotProve": [
+    "live_model_inference",
+    "ten_stream_sse_completion",
+    "eleventh_stream_429",
+    "diagnostic_headers",
+    "usage_accounting"
+  ]
+}
