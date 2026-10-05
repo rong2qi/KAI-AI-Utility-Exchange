@@ -36,6 +36,24 @@
 
 新增 `dahono-router` Provider adapter，构造器注入 endpoint allowlist、key resolver、fetch、timeout 和 network mode。默认仍是 network-disabled；测试必须覆盖：payload 映射、SSE parser、usage、诊断头、401/403/429/5xx、超时、畸形响应和 key 不泄露。
 
+### 写入 staging 测试密钥
+
+密钥由操作者在本机隐藏输入，脚本通过标准输入交给 GitHub CLI，写入仓库 `staging` Environment 的 `DAHONO_API_KEY`。脚本只核对密钥名称和更新时间，不读取或打印密钥值：
+
+```sh
+npm run dahono:staging:secret
+```
+
+脚本不会写服务器 Secret Store，也不会自动预约或发起模型请求；服务器侧接入必须在真实 Dahono adapter 和 staging 运行时都准备好后，按同一密钥来源单独配置。若 GitHub 环境密钥写入失败，脚本退出并明确报告失败。
+
+密钥和有效预约窗口都准备好后，才由受保护入口执行单次 live smoke：
+
+```sh
+npm run dahono:live:smoke -- --confirm-live
+```
+
+未显式带 `--confirm-live` 时不会读取密钥或出网，并以 `blocked` 证据结束。live smoke 只保存请求次数、Provider 请求 ID 哈希、用量、诊断头和输出长度；它不保存密钥或模型正文，也不替代并发、限流、事务存储和回滚验证。
+
 Provider 没有被确认提供上游幂等语义，因此 evidence 记录 `upstreamIdempotency=unsupported`；有效的一次性重试仍由现有 Usage Execution Ledger 的 request hash/idempotency 负责。
 
 ## 验收边界

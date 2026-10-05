@@ -87,6 +87,9 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `src/staging-service.mjs` / `scripts/staging-service.mjs`: loopback-only runtime entry exposing `/healthz` and `/version` from an immutable release manifest.
 - `src/staging-artifact-slots.mjs`: local two-slot release store retaining current and previous immutable artifacts with digest verification and rollback.
 - `scripts/staging-runtime-verify.mjs`: local runtime evidence joining version reporting, health checks, and two-slot rollback.
+- `src/adapters/dahono-router-provider.mjs`: separate OpenAI-compatible Dahono Router adapter with bounded SSE parsing, usage/diagnostic mapping, and safe error classification; network is disabled by default.
+- `scripts/dahono-live-smoke.mjs`: explicit-confirmation single-request live gate; it records redacted evidence only.
+- `scripts/install-dahono-staging-secret.sh`: hidden-input helper that writes `DAHONO_API_KEY` to the GitHub `staging` Environment without printing its value.
 - `StagingReleaseFacade.preview({ version })` / `.publish({ version })`: user-facing release entry points; the system obtains manifest, checks, and fence internally, then returns only a readable status, message, version, and next action.
 - `test/contracts.test.mjs` and `test/hour-key-packaging.test.mjs`: Node's built-in test runner exercising policy, wire, packaging, restart, concurrency, and corrupt-state seams.
 - `test/runtime.test.mjs`, `test/usage-ledger.test.mjs`, and `test/support/fakes.mjs`: orchestration, recovery, idempotency, and provider-token tests.

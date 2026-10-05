@@ -14,6 +14,8 @@
 8. 执行 `staging:runtime:verify`，验证本地 loopback 服务能回读当前版本与摘要，并验证当前/上一制品槽位回滚；
 9. 上传 JSON 证据、Provider Sandbox 证据、本地 HTTP Sandbox 证据、staging rehearsal、staging gate、staging target 证据和原始测试日志。
 
+Dahono 模型池也有独立的受保护入口：CI 会验证 `dahono:live:smoke` 在没有显式确认时不读取密钥、不出网并返回 `blocked`。真实 live smoke 只能在 `staging` 环境密钥 `DAHONO_API_KEY` 和有效预约窗口同时就绪后手动触发；门禁通过不等于真实推理通过。
+
 npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.json。JSON 包含运行时间、Node/npm 版本、测试退出码、Git 修订（若当前目录属于 Git 仓库）以及排除生成目录后的源码 SHA-256 指纹。原始日志用于复核输出，JSON 用于机器读取。失败运行也会上传证据，避免只保留绿色结果。
 
 ## 证据判断

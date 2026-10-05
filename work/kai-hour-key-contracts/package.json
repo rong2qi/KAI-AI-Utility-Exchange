@@ -19,6 +19,8 @@
     "xfyun:contract:verify": "node scripts/xfyun-contract-verify.mjs",
     "xfyun:keychain:check": "node scripts/xfyun-keychain-check.mjs",
     "xfyun:live:smoke": "node scripts/xfyun-live-smoke.mjs",
+    "dahono:staging:secret": "bash scripts/install-dahono-staging-secret.sh",
+    "dahono:live:smoke": "node scripts/dahono-live-smoke.mjs",
     "staging:rehearsal:verify": "node scripts/staging-rehearsal-verify.mjs",
     "staging:gate:verify": "node scripts/staging-gate-verify.mjs",
     "staging:target:verify": "node scripts/staging-target-verify.mjs",
