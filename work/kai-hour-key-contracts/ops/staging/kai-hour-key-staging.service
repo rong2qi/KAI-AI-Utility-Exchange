@@ -1,0 +1,46 @@
+[Unit]
+Description=KAI Hour Key isolated staging runtime
+After=network.target
+
+[Service]
+Type=simple
+User=kai-hour-key-staging-runtime
+Group=kai-hour-key-staging-runtime
+WorkingDirectory=/opt/kai-hour-key-staging/current
+Environment=KAI_STAGING_PORT=18971
+Environment=KAI_STAGING_MANIFEST=/opt/kai-hour-key-staging/current/manifest.json
+ExecStart=/opt/kai-hour-key-staging/runtime/node/bin/node /opt/kai-hour-key-staging/current/scripts/staging-service.mjs
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=true
+RestrictRealtime=true
+CapabilityBoundingSet=
+MemoryMax=256M
+MemorySwapMax=0
+CPUQuota=50%
+TasksMax=64
+# Health-only staging has no outbound integrations. Later Provider access is a reviewed policy change.
+SystemCallFilter=~connect
+SystemCallErrorNumber=EPERM
+RestrictAddressFamilies=AF_INET AF_UNIX
+SocketBindDeny=any
+SocketBindAllow=ipv4:tcp:18971
+IPAddressDeny=any
+IPAddressAllow=localhost
+# Hide peer workspaces, services, configuration and sockets from uploaded runtime code.
+TemporaryFileSystem=/opt:ro /srv:ro /etc:ro /var/lib:ro /var/log:ro /run:ro /usr/local:ro /mnt:ro /media:ro
+BindReadOnlyPaths=/opt/kai-hour-key-staging
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "kai-staging-remote-evidence.v1",
+  "status": "passed",
+  "capturedAt": "2026-10-05",
+  "target": {
+    "name": "kaicloudpay",
+    "hostRole": "shared-production-host",
+    "isolatedRoot": "/opt/kai-hour-key-staging",
+    "service": "kai-hour-key-staging.service",
+    "runtimeUser": "kai-hour-key-staging-runtime",
+    "deployUser": "kai-hour-key-staging-deploy",
+    "loopbackPort": 18971,
+    "nodeVersion": "v22.22.1",
+    "serviceExternalNetworkDisabled": true
+  },
+  "releaseFlow": [
+    {
+      "operation": "deploy",
+      "version": "v2-264b39c",
+      "digest": "150f7a0c9b59db2f58d05c46a7dc69551146022fe52ea07136c46d33020f7f17",
+      "status": "activated"
+    },
+    {
+      "operation": "deploy",
+      "version": "v3-264b39c",
+      "digest": "eeb7b14f2fc6a73132a64e86fe109a81e467bf74abf629b9102e2d2f8cacd172",
+      "status": "activated",
+      "previous": "v2-264b39c"
+    },
+    {
+      "operation": "rollback",
+      "version": "v2-264b39c",
+      "digest": "150f7a0c9b59db2f58d05c46a7dc69551146022fe52ea07136c46d33020f7f17",
+      "status": "rolled_back",
+      "previous": "v3-264b39c"
+    }
+  ],
+  "finalChecks": {
+    "serviceActive": true,
+    "current": "v2-264b39c",
+    "previous": "v3-264b39c",
+    "health": {
+      "status": "ok",
+      "version": "v2-264b39c",
+      "digest": "150f7a0c9b59db2f58d05c46a7dc69551146022fe52ea07136c46d33020f7f17"
+    },
+    "version": {
+      "version": "v2-264b39c",
+      "digest": "150f7a0c9b59db2f58d05c46a7dc69551146022fe52ea07136c46d33020f7f17"
+    },
+    "auditOperations": ["deploy", "deploy", "rollback"]
+  },
+  "boundaries": {
+    "providerExecution": false,
+    "productionBusinessTraffic": false,
+    "databaseTransactionProof": false,
+    "automaticUnhealthyCandidateProof": false,
+    "ciWorkflowRunProof": false
+  }
+}
