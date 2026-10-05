@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "kai-dahono-provider-evidence.v1",
+  "status": "passed",
+  "level": "model-discovery",
+  "source": "live-provider-endpoint",
+  "endpoint": "https://kai.dahono.com/v1/models",
+  "networkAttempted": true,
+  "httpResponseReceived": true,
+  "credentialsUsed": false,
+  "statusCode": 200,
+  "models": ["deepseek-v4.1-flash"],
+  "diagnostics": {
+    "slotIdHash": "853b713abd820a87540825304d7e29f47dcd4576512f81bb01ce1539ffe79814",
+    "serverRegion": "ID",
+    "concurrencyActive": 0,
+    "concurrencyRemaining": 10,
+    "remainingRpm": 10,
+    "hourlyRequestRemaining": 600,
+    "hourlyInputTokens": 0,
+    "hourlyOutputTokens": 0
+  },
+  "doesNotProve": [
+    "authenticated_chat_completion",
+    "reserved_window_inference",
+    "ten_stream_sse_completion",
+    "eleventh_stream_429",
+    "usage_accounting_under_load"
+  ]
+}

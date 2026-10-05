@@ -15,6 +15,8 @@
 
 这次守卫检查的机器证据在 `work/kai-hour-key-contracts/evidence/dahono-provider/guard-20261005.json`；它证明入口可达且窗口保护生效，不把 403 误判为 Provider 已可用。
 
+同一端点的 `GET /v1/models` 已在无凭据条件下返回 200，并列出 `deepseek-v4.1-flash` 及当前诊断计数；这只证明模型发现和网关遥测可读，证据见 `discovery-20261005.json`。
+
 ## 60 分钟执行顺序
 
 | 时间 | 测试 | 通过条件 | 证据 |
