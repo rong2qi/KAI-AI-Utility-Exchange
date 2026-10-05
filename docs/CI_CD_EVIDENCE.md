@@ -22,7 +22,7 @@ CI 的通过结论限定为：
 
 > 在触发工作流的源码修订、Node 22 和 Node 24 矩阵、锁定依赖和 Ubuntu runner 上，npm test 返回退出码 0。
 
-它不等同于真实 Provider、持久化存储、交易执行或生产部署已经通过。`staging-rehearsal`、`staging-gate-rehearsal` 和 `staging-runtime-rehearsal` 都是本地故障、发布门禁、回滚和运行入口演练，不等同于真实 staging。当前工作空间没有真实部署目标，也没有可验证的远端 CI 运行记录；本地运行产生的证据只能证明本地源码状态。`engines` 声明 Node 22 至 Node 24 的支持范围，矩阵用于验证最低和当前支持版本。
+它不等同于真实 Provider、持久化存储、交易执行或生产部署已经通过。`staging-rehearsal`、`staging-gate-rehearsal` 和 `staging-runtime-rehearsal` 仍是本地故障、发布门禁、回滚和运行入口演练；真实 staging 另由受保护部署工作流和 `staging-remote` 证据证明。远端证据只覆盖隔离服务、制品摘要、健康检查、显式回滚和审计，不覆盖整台共享主机或生产业务流量。`engines` 声明 Node 22 至 Node 24 的支持范围，矩阵用于验证最低和当前支持版本。
 
 用户验收层与内部证据分开：用户只看到 `可发布`、`已激活`、`已自动回滚` 或 `需要处理`；源码、锁文件、运行时、Provider、摘要和 gateId 由系统自动核对并保留在证据中。`可发布`只来自无副作用预检，真正写入成功后才显示 `已激活`。
 
@@ -30,9 +30,11 @@ CI 的通过结论限定为：
 
 当前工作流已把 lint、TypeScript 类型检查和覆盖率阈值纳入通过条件。`npm audit --audit-level=high` 会同时检查运行时和开发依赖；它不是完整 SAST，仍需在安全工具和规则固定后另行接入。覆盖率阈值是合同包整体阈值，不代表每个文件都达到同一比例。
 
+2026-10-05 起，真实远端证据已建立：GitHub contract CI run `37255589035` 成功，staging deploy run `37254995986` 的第 3 次尝试在 `staging` 环境经 `rong2qi` 审批后成功。部署目标是共享生产主机上的隔离服务，不代表整台主机或生产业务流量已被验证。脱敏记录见 `work/kai-hour-key-contracts/evidence/staging-remote/`。
+
 ## CD 的建议门禁
 
-当前不添加没有真实目标的自动发布。接入部署环境后，CD 应采用制品晋级流程：
+当前 staging 已有真实目标，CD 采用制品晋级流程：
 
 - 仅允许从已上传的 CI 证据中选择 status=passed 且源码指纹匹配的制品；
 - 在受保护环境中要求人工审批；
