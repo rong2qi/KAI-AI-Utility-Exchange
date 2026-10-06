@@ -12,7 +12,7 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from xml.sax.saxutils import escape
 from pathlib import Path
 
-OUT = Path('/Users/a1/Documents/Codex/2026-10-02/w-r/outputs/KAI_AI_Utility_Exchange_企划.pdf')
+OUT = Path(__file__).resolve().parents[1] / 'outputs' / 'KAI_AI_Utility_Exchange_企划.pdf'
 FONT = '/System/Library/Fonts/Supplemental/Arial Unicode.ttf'
 pdfmetrics.registerFont(TTFont('KaiSans', FONT))
 

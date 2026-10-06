@@ -19,7 +19,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.enum.style import WD_STYLE_TYPE
 
-ROOT = Path('/Users/kai/Documents/Codex/w-r')
+ROOT = Path(__file__).resolve().parents[1]
 OUTDIR = ROOT / 'outputs'
 OUTDIR.mkdir(exist_ok=True)
 PDF_OUT = OUTDIR / 'KAI_AI_Utility_Exchange_企划.pdf'
