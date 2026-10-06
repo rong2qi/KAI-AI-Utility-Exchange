@@ -42,7 +42,9 @@ CI 的通过结论限定为：
 
 2026-10-06 离线判断拆分切片：实时采集与历史回放共用纯评估器，分别判断调用成功、预约绑定和发现接口一致性；小样本计数不再依赖先发过载请求。新增预约身份输入，错预约独立于数值诊断头触发取消，过载入场要求已知正确身份和有效诊断。独立回读复现并修复“不可能时间轴证明重叠”“坏统计头掩盖错预约”两项关联问题，再验证 38/38 定向测试通过，未发现遗留阻断。本机完整质量门 170/170 测试通过，行/分支/函数覆盖率 94.05% / 81.76% / 94.49%，lint、声明类型检查通过，依赖审计 0 漏洞；原始日志保存为 `work/kai-hour-key-contracts/evidence/dahono-capacity/local-quality-split-20261006.log`。
 
-本片回放记录为 `work/kai-hour-key-contracts/evidence/dahono-capacity/replay-37440028834-split-v1.json`：使用上述未改写 live 原件及本地预约回执哈希，十次调用成功与预约绑定分别为 `proven`，发现接口身份一致性为 `failed`，整体为 `not_proven`；观察到的流重叠峰值仍为 7。记录绑定评估器 SHA-256，新增 Provider 请求为 0，不改写 `LATEST-LIVE.json` 或原始失败记录。该判断拆分不会追认真实十路重叠、第十一路 429、整小时额度或生产安全通过。源码固定点与远端 CI 回执在对应运行完成后追加；用户验收状态仍待用户确认。
+本片回放记录为 `work/kai-hour-key-contracts/evidence/dahono-capacity/replay-37440028834-split-v1.json`：使用上述未改写 live 原件及本地预约回执哈希，十次调用成功与预约绑定分别为 `proven`，发现接口身份一致性为 `failed`，整体为 `not_proven`；观察到的流重叠峰值仍为 7。记录绑定评估器 SHA-256，新增 Provider 请求为 0，不改写 `LATEST-LIVE.json` 或原始失败记录。该判断拆分不会追认真实十路重叠、第十一路 429、整小时额度或生产安全通过。用户验收状态仍待用户确认。
+
+对应远端 [contract CI run 37444693813](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37444693813) 已成功，固定源码 `c16872b98ef1fc1d60b19a1df15b25e641aadbe6`，Node `22.23.3`，170/170 测试与全部质量门通过，行/分支/函数覆盖率 96.79% / 85.99% / 94.53%。本地 Node `24.21.0` 结果单独记证，不称为远端双版本矩阵。三项真实调用入口均在未确认时保持门禁；容量 guard 为 `blocked`，出网/使用凭据均为 false。artifact `kai-hour-key-ci-evidence-37444693813-1`（ID `11402966993`）已下载至 `work/kai-hour-key-contracts/evidence/ci/github-37444693813-artifact/`，原始 ZIP 同目录旁以 `.zip` 保存，其实算 SHA-256 与 GitHub 摘要一致：`066a252e4799ad19593a3abc54d1570edf901c1c4706e7c40ba55433f76bc225`。已回读 JSON 和原始日志，87 文件包指纹 `aec496337816bcd342c268935efd504ce5f39c3c87d04564657ac4597a68b54d` 与 5 文件容量入口指纹均按当前固定源码重算匹配；runner 因生成证据报告 `workingTreeDirty=true`，不宣称其整棵工作树干净。此次仅触发合同 CI，无新增付费容量运行或 staging 部署。
 
 ## CD 的建议门禁
 
