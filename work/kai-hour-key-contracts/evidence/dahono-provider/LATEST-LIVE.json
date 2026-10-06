@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "kai-dahono-provider-live-pointer.v1",
+  "latestEvidenceFile": "evidence/dahono-provider/live-20261006020040126.json",
+  "status": "passed",
+  "level": "dahono-provider-live-smoke"
+}

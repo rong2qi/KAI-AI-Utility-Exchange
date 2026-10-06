@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "kai-dahono-provider-live-evidence.v1",
+  "level": "dahono-provider-live-smoke",
+  "provider": "dahono-router",
+  "endpoint": "https://kai.dahono.com/v1/chat/completions",
+  "model": "deepseek-v4.1-flash",
+  "requestCount": 1,
+  "sourceFingerprint": "2271abe31bab0df49cb8aa545be515a76cd917780e645208a3a87c95263796b1",
+  "codeVersion": "d0d54de588f9d967d9344a7fe332d83b2f2a7405",
+  "claim": "在有效预约窗口内，以受保护密钥完成一次 Dahono SSE 推理并得到用量与诊断头",
+  "doesNotProve": [
+    "十路并发 SSE",
+    "第十一路 429",
+    "持续额度",
+    "事务存储",
+    "真实 staging 回滚",
+    "生产安全"
+  ],
+  "status": "passed",
+  "claimStatus": "proven",
+  "proves": [
+    "在有效预约窗口内，以受保护密钥完成一次 Dahono SSE 推理并得到用量与诊断头"
+  ],
+  "notProven": [],
+  "networkAttempted": true,
+  "httpResponseReceived": true,
+  "credentialsUsed": true,
+  "providerRequestIdHash": "4a0fc24c9470fef2",
+  "usage": {
+    "inputUnits": 2042,
+    "outputUnits": 23,
+    "totalUnits": 2065
+  },
+  "diagnostics": {
+    "slotId": "dhn-alloc-20261006-0200-py28hx",
+    "serverRegion": "ID",
+    "concurrencyActive": 1,
+    "concurrencyRemaining": 9,
+    "remainingRpm": 9,
+    "hourlyReqRemaining": 599,
+    "hourlyTokensInput": 7,
+    "hourlyTokensOutput": 0
+  },
+  "outputContentLength": 2
+}
