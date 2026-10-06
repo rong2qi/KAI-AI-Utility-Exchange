@@ -15,3 +15,4 @@ work/kai-hour-key-contracts/evidence/staging-gate/*
 work/kai-hour-key-contracts/evidence/staging-target/*
 work/kai-hour-key-contracts/evidence/dahono-capacity/*
 work/kai-hour-key-contracts/evidence/provider-concurrency-quota/local-*.json
+work/kai-hour-key-contracts/evidence/dahono-provider/booking-*
