@@ -1,0 +1,745 @@
+
+> kai-hour-key-contracts@0.1.0 quality:verify
+> npm run lint && npm run typecheck && npm run test:coverage && npm run provider:sandbox:verify && npm run concurrency:quota:verify && npm run http:sandbox:verify && npm run xfyun:contract:verify && npm run staging:rehearsal:verify && npm run staging:gate:verify && npm run staging:target:verify && npm run staging:runtime:verify && npm run staging:bundle:verify && npm run security:audit
+
+
+> kai-hour-key-contracts@0.1.0 lint
+> eslint .
+
+
+> kai-hour-key-contracts@0.1.0 typecheck
+> tsc --noEmit
+
+
+> kai-hour-key-contracts@0.1.0 test:coverage
+> node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=75 --test-coverage-functions=90 test/*.test.mjs
+
+✔ acceptance harness proves ten concurrent requests and rejects the eleventh (19.174834ms)
+✔ acceptance harness reports a failed claim when the adapter does not enforce the limit (1.542584ms)
+✔ missing usage fails with structured evidence instead of crashing (0.336959ms)
+✔ portable evaluation needs no private telemetry and cannot assert network isolation (0.248417ms)
+✔ untrusted error codes and unsafe aggregate usage never enter evidence (0.324625ms)
+✔ ordinary compute intent does not open discovery (2.547959ms)
+✔ explicit dynamic question opens only the Offer catalog (0.10875ms)
+✔ ambiguous recommendation asks before querying (0.059459ms)
+✔ cross-provider execution is denied while the same account key remains usable (0.110709ms)
+✔ a new grant changes model scope without changing the account key (0.077875ms)
+✔ hour boundaries are explicit and deterministic (0.060708ms)
+✔ alternative selection needs switch permission and matching resource scope (0.572042ms)
+✔ invalid slot ordering is rejected before authorization (0.597542ms)
+✔ compute is rejected outside the active slot and receipts remain readable after expiry (0.208583ms)
+✔ provider/model recommendation asks before opening Discovery (0.1475ms)
+✔ wire schemas are strict and keep secrets out of the envelope (12.445083ms)
+✔ source URLs are canonicalized to approved KAI fact pages (0.282708ms)
+✔ transport contract is valid JSON and keeps execution behind an account key (4.129ms)
+✔ confirmation, explicit one-hour active window and credentials gate all network access (2.811667ms)
+✔ observes ten unfinished SSE streams before overflow and verifies independent later accounting (29.546833ms)
+✔ fast responses cannot manufacture overlapping provider work or issue an eleventh request (1.837917ms)
+✔ 429 with exhausted RPM proves overload only, not the concurrency-specific limit (4.187917ms)
+✔ 429 while provider still reports free concurrent capacity cannot prove the concurrency limit (3.963875ms)
+✔ malformed token usage fails ten-stream success and never becomes settled accounting (3.258541ms)
+✔ an aborted provider request cancels other open bodies without exposing the original error (2.935542ms)
+✔ busy slot and insufficient quota stop before any POST (1.084167ms)
+✔ unexplained final token changes leave accounting unproven when counter units or settlement timing may differ (4.539083ms)
+✔ streams finishing before the overflow headers cannot prove concurrent rejection from stale headers (4.967459ms)
+✔ a hung body reaches the 30-second deadline and every held body is cancelled (virtual timer) (4.446916ms)
+✔ preflight validates diagnostics and bounds snapshot body without leaking attacker-controlled errors (0.8365ms)
+✔ the five-minute wall deadline aborts a stuck sample pause without issuing more requests (virtual timer) (2.33ms)
+✔ capacity CLI requires confirmation and never prints supplied secret or unknown arguments (192.55675ms)
+✔ maps an OpenAI-compatible SSE response and diagnostics into the Provider port (19.195625ms)
+✔ resolves the key inside the adapter and never exposes it in result or errors (0.83925ms)
+✔ rejects unsupported endpoint, scope, malformed input, and missing credentials before network access (0.261334ms)
+✔ keeps SSE identity stable, rejects model changes and multiple choices, and requires a final finish reason (1.844875ms)
+✔ allows usage:null intermediate blocks but requires safe, consistent final usage (0.507583ms)
+✔ default construction is network-disabled and does not read a key or call fetch (0.092416ms)
+✔ classifies credential, reservation-window, rate-limit, and upstream failures safely (1.363875ms)
+✔ maps aborts to a retryable timeout and rejects malformed SSE or missing usage (12.762167ms)
+✔ cancels and releases response readers on malformed, oversized, timeout, and HTTP-error paths (6.676958ms)
+✔ accepts prompt input and keeps optional request parameters bounded (0.721333ms)
+✔ packages a real market Offer without changing market facts (1.061542ms)
+✔ packaging is idempotent for the same account command (0.099916ms)
+✔ packaging rejects a conflicting idempotency key without overwriting the first Offer (0.24925ms)
+✔ packaging rejects an unavailable or ineligible Offer, including malformed packaged input (0.078375ms)
+✔ concurrent duplicate packaging returns one stable result (0.084709ms)
+✔ JSON packaging store survives adapter recreation and concurrent writers (63.451834ms)
+✔ corrupt packaging state fails without leaving a lock file (4.147291ms)
+✔ HTTP adapter preserves successful replay semantics across the local boundary (26.605625ms)
+✔ HTTP 503 keeps a transient Provider failure retryable (10.843792ms)
+✔ transport timeout is surfaced as a retryable timeout (17.238125ms)
+✔ malformed HTTP response stays visible for Runtime and Usage Ledger to reject (5.908083ms)
+✔ HTTP scope error prevents an unsupported resource from executing (1.279209ms)
+✔ HTTP server rejects non-JSON requests and unknown paths (9.362792ms)
+✔ HTTP server rejects an oversized request body (6.091ms)
+✔ HTTP adapter rejects external endpoints and reports a closed sandbox as unavailable (2.277583ms)
+✔ internal sandbox returns a deterministic successful Provider result (2.917916ms)
+✔ same idempotency key and request facts replay the same result across request ids (0.20575ms)
+✔ same idempotency key with different request facts is rejected (0.423625ms)
+✔ transient sandbox failure can recover on the next attempt (0.14075ms)
+✔ timeout profile returns a retryable provider timeout (0.085583ms)
+✔ model and region outside the configured sandbox scope are rejected (0.08175ms)
+✔ malformed profile stays visibly malformed for the caller to reject (0.066833ms)
+✔ real market Offers remain execution eligible before KAI Hour Key packaging (2.552583ms)
+✔ reference market adapter filters by normalized catalog dimensions (0.171459ms)
+✔ reference market preserves an unavailable source status instead of downgrading it to limited (0.07925ms)
+✔ ordinary Compute never calls Discovery and emits a Receipt (2.736333ms)
+✔ explicit market intent calls KAI Offer catalog and not Provider (0.300166ms)
+✔ Discovery does not depend on Holding storage availability (0.075084ms)
+✔ ambiguous recommendation has no side effect until confirmation (0.164917ms)
+✔ lock requires confirmation and writes through Holding only (0.30475ms)
+✔ lock packaging failure leaves Holding untouched and is retryable (0.140083ms)
+✔ lock rejects an ineligible Offer before packaging or Holding lock (0.077ms)
+✔ lock keeps an unavailable Offer retryable without creating a Holding (0.082167ms)
+✔ lock rejects a packager result that downgrades execution eligibility (0.102542ms)
+✔ lock rejects an Offer after its own lock deadline even when the Grant remains open (0.067667ms)
+✔ lock rejects a Holding response bound to another Grant or Offer (0.075042ms)
+✔ persistent packaging survives a Holding lock failure and retry (24.765666ms)
+✔ stale market Offer stops before packaging or Holding lock (0.289834ms)
+✔ lock evaluates the actual Offer resource before packaging (0.165667ms)
+✔ scope expansion is denied without replacing the account key (0.125375ms)
+✔ Compute rejects a resource outside the existing Holding scope (0.0875ms)
+✔ Compute binds the selected Grant to the Holding grant (0.149833ms)
+✔ Compute rejects an expired Holding even when the Grant remains active (0.055958ms)
+✔ Compute rejects an idempotency key shorter than the transport contract (0.052541ms)
+✔ Receipt remains readable after the compute window closes (0.152ms)
+✔ provider failure does not consume Holding or write Receipt (0.099542ms)
+✔ malformed sandbox Provider result does not consume Holding or write Receipt (0.771958ms)
+✔ runtime resumes a failed Receipt write without repeating Provider or Holding side effects (0.220417ms)
+✔ Compute requires an explicit idempotency key (0.05325ms)
+✔ untrusted Offer source fails before returning Discovery data (0.059042ms)
+✔ staging bundle contains only the runtime boundary and a digest sidecar (86.707292ms)
+✔ staging bundle rejects unsafe versions and output names (68.151333ms)
+✔ a stale staging worker cannot commit after a newer fence is acquired (2.015167ms)
+✔ artifact registry uses the transactional store port instead of a concrete store (1.176083ms)
+✔ artifact registry rejects an object that does not implement the transaction store port (0.178625ms)
+✔ artifact activation and rollback require a matching immutable digest (0.699917ms)
+✔ release gate activates a manifest-backed artifact after required checks pass and ignores warnings (7.983458ms)
+✔ user release result exposes a compact activated status without gate internals (0.619958ms)
+✔ user release result maps rollback and blocked outcomes to actionable language (0.071917ms)
+✔ user preview reports ready without activating or writing history (0.178208ms)
+✔ release facade accepts only a candidate version and assembles internal inputs automatically (0.334583ms)
+✔ release facade hides ordinary loader failures from the user result (0.102875ms)
+✔ user release result hides internal validation errors behind a retry action (0.066167ms)
+✔ failed required health check automatically rolls back to the verified previous artifact (0.210083ms)
+✔ release gate blocks when required checks fail and no verified previous artifact exists (0.089875ms)
+✔ same release gate is idempotent and does not duplicate audit history (0.133958ms)
+✔ release gate rejects manifest and artifact digest mismatch without activation (0.11675ms)
+✔ a superseded fence cannot write an automatic rollback (0.176916ms)
+✔ restart recovery reuses the recorded Provider result exactly once (40.218875ms)
+✔ staging service reports its running version and digest (26.112042ms)
+✔ staging service exposes an unhealthy result without hiding the running version (4.366708ms)
+✔ staging service keeps its boundary small and rejects unsupported requests (2.965291ms)
+✔ staging service rejects a missing version or digest before listening (0.657625ms)
+✔ staging service rejects a non-local host, invalid port, or invalid timeout (0.638292ms)
+✔ staging service response contains only the release identity, never extra options (4.162ms)
+✔ staging service rejects unsafe versions and non-sha256 identities (0.532792ms)
+✔ artifact slots keep current and previous immutable releases (56.171542ms)
+✔ current and previous are two references without silently deleting installed releases (43.265709ms)
+✔ concurrent conflicting installs commit exactly one byte-identical artifact (20.811334ms)
+✔ install never labels a pre-existing partial artifact with a different digest (1.495792ms)
+✔ activation and rollback reject tampered bytes without changing either slot (38.323875ms)
+✔ installing a candidate concurrently with activation preserves it for later review (44.375167ms)
+✔ local artifact rehearsal accepts text only instead of corrupting binary round trips (0.279792ms)
+✔ safe version identifiers cannot collide with inherited JavaScript property names (15.263084ms)
+✔ artifact paths reject symlinks without writing to an outside directory (15.499458ms)
+✔ rollback swaps current and previous while preserving both digests (28.584458ms)
+✔ artifact slots reject conflicting or tampered releases (6.1735ms)
+✔ local staging target declares its dry-run boundary before any activation (2.37675ms)
+✔ local staging target activates an artifact and reports a passing health check (0.178667ms)
+✔ failed health check rolls back to the requested previous artifact (0.112917ms)
+✔ target rejects health checks and rollback for a non-active or malformed artifact (0.28375ms)
+✔ target audit history contains lifecycle facts without credentials (0.080916ms)
+✔ usage ledger commits provider, Holding, and Receipt in resumable states (1.616791ms)
+✔ Receipt failure resumes from the durable Holding state without repeating side effects (0.39275ms)
+✔ same idempotency key with different request facts is rejected (0.138333ms)
+✔ concurrent calls serialize one execution per idempotency key (0.130334ms)
+✔ JSON ledger store survives a new ledger instance after Receipt failure (32.53325ms)
+✔ maps the documented Spark request and response into the Provider port (13.061709ms)
+✔ resolves a key from the injected resolver without exposing it in the result (0.261333ms)
+✔ Keychain resolver returns a value without exposing the security command output (0.132375ms)
+✔ rejects unsupported stream requests, models, and endpoints before network access (0.315458ms)
+✔ does not turn a missing secret into a network call (0.081833ms)
+✔ default construction cannot reach the network until the composition root enables live mode (0.062541ms)
+✔ maps HTTP, business, malformed response, and timeout failures without leaking secrets (5.86575ms)
+ℹ tests 146
+ℹ suites 0
+ℹ pass 146
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 464.062833
+ℹ start of coverage report
+ℹ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ file                                    | line % | branch % | funcs % | uncovered lines
+ℹ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ scripts                                 |        |          |         | 
+ℹ  dahono-capacity-verify.mjs             |  95.45 |    45.45 |   75.00 | 27-29
+ℹ  staging-bundle.mjs                     | 100.00 |    33.33 |  100.00 | 
+ℹ src                                     |        |          |         | 
+ℹ  adapters                               |        |          |         | 
+ℹ   dahono-router-provider.mjs            |  89.51 |    71.86 |   82.86 | 45-46 60 68-69 73-77 80-81 110-111 189-191 236-237 241-242 270-271 309-310 314-321 328-329 339-340 395-396 418-419 422-424 448 456-457 459-460
+ℹ   hour-key-packaging.mjs                |  85.71 |    84.21 |   66.67 | 19-20 28-29 34-36
+ℹ   json-atomic-file.mjs                  |  92.31 |    81.25 |   87.50 | 21-22 48-50
+ℹ   json-hour-key-packaging-store.mjs     |  95.92 |    82.35 |  100.00 | 21-22
+ℹ   json-usage-execution-ledger-store.mjs |  86.05 |    73.68 |  100.00 | 17-18 38-41
+ℹ   local-http-provider.mjs               |  95.71 |    76.79 |   94.44 | 51-52 108-112
+ℹ   local-staging-target.mjs              | 100.00 |    92.00 |  100.00 | 
+ℹ   quota-sandbox-provider.mjs            | 100.00 |    71.43 |  100.00 | 
+ℹ   reference-market.mjs                  |  94.59 |    60.00 |   87.50 | 9 42-44
+ℹ   sandbox-provider.mjs                  |  97.26 |    72.34 |  100.00 | 106-107 139-140
+ℹ   xfyun-spark-provider.mjs              |  87.91 |    70.93 |   88.24 | 31-32 34-35 40-41 49-50 110-111 135 144-149 167-168 184-185 187-188 208-210
+ℹ  concurrency-quota-acceptance.mjs       | 100.00 |    93.18 |  100.00 | 
+ℹ  dahono-capacity-acceptance.mjs         | 100.00 |    88.20 |   91.84 | 
+ℹ  intent.mjs                             |  94.74 |    76.92 |  100.00 | 18
+ℹ  offer-facts.mjs                        | 100.00 |   100.00 |  100.00 | 
+ℹ  policy.mjs                             |  84.72 |    75.51 |   80.00 | 29-30 36-37 42-43 51-53 55-56
+ℹ  release-user-result.mjs                |  94.37 |    66.67 |  100.00 | 25-26 61-62
+ℹ  runtime.mjs                            |  89.55 |    74.76 |  100.00 | 53-54 62-63 68-69 75-76 80-81 91-92 117-118 129-130 185-186 193-200 206-207 209-210
+ℹ  scope.mjs                              | 100.00 |    86.21 |  100.00 | 
+ℹ  source-policy.mjs                      | 100.00 |    92.86 |  100.00 | 
+ℹ  staging-artifact-slots.mjs             |  97.16 |    85.87 |  100.00 | 64-65 70-71 121
+ℹ  staging-rehearsal.mjs                  |  93.73 |    79.20 |  100.00 | 30-31 54-55 58-59 66-67 70-71 73-74 206-207 303-304 306-309
+ℹ  staging-release-facade.mjs             |  90.48 |    56.25 |  100.00 | 7-8 31-32
+ℹ  staging-service.mjs                    |  94.21 |    91.11 |   93.33 | 60-61 99-100 112-114
+ℹ  time.mjs                               | 100.00 |    87.50 |  100.00 | 
+ℹ  usage-ledger.mjs                       |  96.85 |    86.36 |   90.00 | 44-45 104-105
+ℹ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ all files                               |  93.75 |    78.77 |   93.60 | 
+ℹ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ end of coverage report
+
+> kai-hour-key-contracts@0.1.0 provider:sandbox:verify
+> node scripts/provider-sandbox-verify.mjs
+
+{
+  "schemaVersion": "kai-provider-sandbox-evidence.v1",
+  "status": "passed",
+  "level": "internal-provider-sandbox",
+  "runId": "local-20261006034406226",
+  "startedAt": "2026-10-06T03:44:06.226Z",
+  "scope": {
+    "providerId": "sandbox-provider-v1",
+    "networkDisabled": true,
+    "credentialsUsed": false,
+    "nodeVersion": "v24.21.0",
+    "npmVersion": "11.19.0",
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": {
+      "fileCount": 86,
+      "sha256": "65f2b1ba6bfb46359b61c422db94e8e3344653f4046b97c9956cef028ba47bde"
+    }
+  },
+  "scenarios": [
+    {
+      "name": "success_and_replay",
+      "outcome": "passed",
+      "executions": 1,
+      "calls": 2
+    },
+    {
+      "name": "idempotency_conflict",
+      "outcome": "passed",
+      "code": "IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "name": "transient_recovery",
+      "outcome": "passed",
+      "firstCode": "PROVIDER_TRANSIENT"
+    },
+    {
+      "name": "timeout_mapping",
+      "outcome": "passed",
+      "code": "PROVIDER_TIMEOUT"
+    },
+    {
+      "name": "malformed_result_is_visible",
+      "outcome": "passed",
+      "status": "unknown"
+    }
+  ]
+}
+
+> kai-hour-key-contracts@0.1.0 concurrency:quota:verify
+> node scripts/concurrency-quota-verify.mjs
+
+{
+  "schemaVersion": "kai-provider-concurrency-quota-evidence.v2",
+  "status": "passed",
+  "level": "local-provider-concurrency-quota",
+  "startedAt": "2026-10-06T03:44:06.388Z",
+  "scope": {
+    "concurrencyLimit": 10,
+    "requestsIssued": 11,
+    "networkDisabled": true,
+    "credentialsUsed": false,
+    "providerId": "sandbox-provider-v1",
+    "nodeVersion": "v24.21.0",
+    "npmVersion": "11.19.0",
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": "90ae9f7bd111ddf6b0eb3829a7880c10dcd62bcfb38f75997a82ba12ab0b29c0"
+  },
+  "claim": "前 N 个请求成功且用量合法，第 N+1 个请求返回可重试限流",
+  "doesNotProve": [
+    "accepted_stream_overlap",
+    "rate_limit_cause",
+    "hourly_quota",
+    "transport_isolation"
+  ],
+  "checks": {
+    "successfulRequests": true,
+    "rateLimitedRequests": true,
+    "usageTotals": true
+  },
+  "failedChecks": [],
+  "results": {
+    "successfulRequests": 10,
+    "successfulRequestIndexes": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "rateLimitedRequests": 1,
+    "rateLimitedRequestIndexes": [
+      10
+    ],
+    "usage": {
+      "inputUnits": 40,
+      "outputUnits": 10,
+      "totalUnits": 50
+    },
+    "errors": [
+      {
+        "index": 10,
+        "code": "PROVIDER_RATE_LIMITED",
+        "retryable": true
+      }
+    ]
+  },
+  "localTelemetry": {
+    "peakAcceptedConcurrency": 10,
+    "activeAfter": 0
+  },
+  "runId": "local-20261006034406406"
+}
+
+> kai-hour-key-contracts@0.1.0 http:sandbox:verify
+> node scripts/local-http-sandbox-verify.mjs
+
+{
+  "schemaVersion": "kai-local-http-sandbox-evidence.v1",
+  "status": "passed",
+  "level": "local-http-sandbox",
+  "runId": "local-20261006034406553",
+  "startedAt": "2026-10-06T03:44:06.553Z",
+  "scope": {
+    "endpointScope": "127.0.0.1-only",
+    "externalNetworkUsed": false,
+    "credentialsUsed": false,
+    "nodeVersion": "v24.21.0",
+    "npmVersion": "11.19.0",
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": {
+      "fileCount": 86,
+      "sha256": "65f2b1ba6bfb46359b61c422db94e8e3344653f4046b97c9956cef028ba47bde"
+    }
+  },
+  "result": {
+    "command": "node --test test/local-http-sandbox.test.mjs",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  }
+}
+
+> kai-hour-key-contracts@0.1.0 xfyun:contract:verify
+> node scripts/xfyun-contract-verify.mjs
+
+{
+  "schemaVersion": "kai-provider-contract-evidence.v1",
+  "status": "passed",
+  "runId": "local-20261006034406900",
+  "startedAt": "2026-10-06T03:44:06.900Z",
+  "finishedAt": "2026-10-06T03:44:06.979Z",
+  "level": "upstream-provider-contract",
+  "provider": "xfyun-spark-chat",
+  "endpoint": "https://maas-api.cn-huabei-1.xf-yun.com/v2/chat/completions",
+  "networkDisabled": true,
+  "credentialsUsed": false,
+  "result": {
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  "source": {
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": "65f2b1ba6bfb46359b61c422db94e8e3344653f4046b97c9956cef028ba47bde",
+    "sourceFileCount": 86
+  }
+}
+
+> kai-hour-key-contracts@0.1.0 staging:rehearsal:verify
+> node scripts/staging-rehearsal-verify.mjs
+
+{
+  "schemaVersion": "kai-staging-rehearsal-evidence.v1",
+  "status": "passed",
+  "level": "staging-rehearsal",
+  "runId": "local-20261006034407088",
+  "startedAt": "2026-10-06T03:44:07.088Z",
+  "finishedAt": "2026-10-06T03:44:07.184Z",
+  "scope": {
+    "networkDisabled": true,
+    "externalNetworkUsed": false,
+    "database": "disposable-json-ledger-and-in-memory-fenced-transaction-model",
+    "productionProof": false,
+    "realStagingProof": false,
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": {
+      "fileCount": 86,
+      "sha256": "65f2b1ba6bfb46359b61c422db94e8e3344653f4046b97c9956cef028ba47bde"
+    }
+  },
+  "scenarios": [
+    "stale_worker_rejected_by_fence",
+    "restart_recovery_reuses_provider_result",
+    "immutable_artifact_activation_and_rollback"
+  ],
+  "result": {
+    "command": "node --test test/staging-rehearsal.test.mjs",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  }
+}
+
+> kai-hour-key-contracts@0.1.0 staging:gate:verify
+> node scripts/staging-gate-verify.mjs
+
+{
+  "schemaVersion": "kai-staging-gate-evidence.v1",
+  "status": "passed",
+  "level": "staging-gate-rehearsal",
+  "runId": "local-20261006034407286",
+  "startedAt": "2026-10-06T03:44:07.286Z",
+  "finishedAt": "2026-10-06T03:44:07.295Z",
+  "scope": {
+    "networkDisabled": true,
+    "externalNetworkUsed": false,
+    "database": "in-memory-fenced-artifact-registry",
+    "productionProof": false,
+    "realStagingProof": false,
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": {
+      "fileCount": 86,
+      "sha256": "65f2b1ba6bfb46359b61c422db94e8e3344653f4046b97c9956cef028ba47bde"
+    }
+  },
+  "scenarios": [
+    {
+      "name": "required_checks_pass_activate",
+      "decision": "activate",
+      "userOutcome": {
+        "status": "activated",
+        "label": "已激活",
+        "message": "版本已完成检查并启用。",
+        "version": "v1",
+        "actionRequired": false
+      },
+      "gateId": "3ea01983a975de9eeb9969059f1f5a776c18bc56195e26314a63fcd48957cedf",
+      "manifest": {
+        "version": "v1",
+        "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sourceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "packageLockSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "nodeRange": ">=22.0.0 <25.0.0",
+        "providerModel": "spark-x2.5-4b",
+        "artifactSha256": "d25252040204953b4a9926344bf5de38d5bbd36d01e71eb25b4c68a535f99248",
+        "createdAt": "2026-10-04T02:00:00.000Z"
+      },
+      "checks": [
+        {
+          "name": "contract",
+          "status": "passed",
+          "required": true
+        },
+        {
+          "name": "provider-sandbox",
+          "status": "warning",
+          "required": false,
+          "detail": "sandbox only"
+        },
+        {
+          "name": "startup",
+          "status": "passed",
+          "required": true
+        }
+      ],
+      "candidateDigest": "d25252040204953b4a9926344bf5de38d5bbd36d01e71eb25b4c68a535f99248",
+      "activeDigest": "d25252040204953b4a9926344bf5de38d5bbd36d01e71eb25b4c68a535f99248",
+      "previousDigest": null
+    },
+    {
+      "name": "required_check_failed_rollback",
+      "decision": "rollback",
+      "userOutcome": {
+        "status": "rolled_back",
+        "label": "已自动回滚",
+        "message": "新版本检查未通过，系统已恢复上一版本。",
+        "restoredVersion": "v1",
+        "actionRequired": false,
+        "nextAction": "review_checks"
+      },
+      "reasonCode": "REQUIRED_HEALTH_CHECK_FAILED",
+      "gateId": "5b5b4e7667df2319111882b7afeb9515c1ecbbbf5b441c7034377ab9062443f3",
+      "manifest": {
+        "version": "v2",
+        "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sourceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "packageLockSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "nodeRange": ">=22.0.0 <25.0.0",
+        "providerModel": "spark-x2.5-4b",
+        "artifactSha256": "b7ee9d3f0df825a24123850165fc646c3e155c6df07df8506526874122e80ac0",
+        "createdAt": "2026-10-04T02:00:00.000Z"
+      },
+      "checks": [
+        {
+          "name": "contract",
+          "status": "failed",
+          "required": true,
+          "detail": "contract mismatch"
+        },
+        {
+          "name": "startup",
+          "status": "passed",
+          "required": true
+        }
+      ],
+      "candidateDigest": "b7ee9d3f0df825a24123850165fc646c3e155c6df07df8506526874122e80ac0",
+      "activeDigest": "d25252040204953b4a9926344bf5de38d5bbd36d01e71eb25b4c68a535f99248",
+      "previousDigest": "d25252040204953b4a9926344bf5de38d5bbd36d01e71eb25b4c68a535f99248"
+    },
+    {
+      "name": "failed_check_without_previous_blocks",
+      "decision": "blocked",
+      "userOutcome": {
+        "status": "needs_attention",
+        "label": "需要处理",
+        "message": "检查未通过，当前没有可恢复的上一版本。",
+        "actionRequired": true,
+        "nextAction": "fix_checks_and_publish_again"
+      },
+      "reasonCode": "NO_VERIFIED_PREVIOUS_ARTIFACT",
+      "gateId": "a9374df0909b8fccf52e9473f90c8cf274294b3805e201d0dca3ff2f1d4007a4",
+      "manifest": {
+        "version": "v3",
+        "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sourceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "packageLockSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "nodeRange": ">=22.0.0 <25.0.0",
+        "providerModel": "spark-x2.5-4b",
+        "artifactSha256": "3d34aaa548641c9a464662939aaeb629cf900772428917a4469c47ae0d0ab2d4",
+        "createdAt": "2026-10-04T02:00:00.000Z"
+      },
+      "checks": [
+        {
+          "name": "startup",
+          "status": "failed",
+          "required": true
+        }
+      ],
+      "candidateDigest": "3d34aaa548641c9a464662939aaeb629cf900772428917a4469c47ae0d0ab2d4",
+      "activeDigest": null,
+      "previousDigest": null
+    }
+  ],
+  "result": {
+    "error": null
+  }
+}
+
+> kai-hour-key-contracts@0.1.0 staging:target:verify
+> node scripts/staging-target-verify.mjs
+
+{
+  "schemaVersion": "kai-staging-target-evidence.v1",
+  "status": "passed",
+  "level": "staging-target-rehearsal",
+  "runId": "local-20261006034407395",
+  "startedAt": "2026-10-06T03:44:07.395Z",
+  "finishedAt": "2026-10-06T03:44:07.403Z",
+  "scope": {
+    "targetId": "local-dry-run",
+    "networkDisabled": true,
+    "externalNetworkUsed": false,
+    "realStagingProof": false,
+    "productionProof": false,
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": {
+      "fileCount": 86,
+      "sha256": "65f2b1ba6bfb46359b61c422db94e8e3344653f4046b97c9956cef028ba47bde"
+    }
+  },
+  "scenarios": [
+    {
+      "name": "target_declares_dry_run_boundary",
+      "result": {
+        "targetId": "local-dry-run",
+        "networkDisabled": true,
+        "realStagingProof": false,
+        "active": null
+      }
+    },
+    {
+      "name": "activate_previous_artifact",
+      "result": {
+        "status": "activated",
+        "version": "v1",
+        "digest": "digest-v1"
+      }
+    },
+    {
+      "name": "activate_candidate_artifact",
+      "result": {
+        "status": "activated",
+        "version": "v2",
+        "digest": "digest-v2"
+      }
+    },
+    {
+      "name": "candidate_health_check_fails",
+      "result": {
+        "status": "failed",
+        "version": "v2",
+        "digest": "digest-v2",
+        "reason": "configured_local_failure"
+      }
+    },
+    {
+      "name": "rollback_to_known_previous_artifact",
+      "result": {
+        "status": "rolled_back",
+        "version": "v1",
+        "digest": "digest-v1",
+        "reason": "health_check_failed"
+      }
+    },
+    {
+      "name": "target_reports_restored_artifact",
+      "result": {
+        "targetId": "local-dry-run",
+        "networkDisabled": true,
+        "realStagingProof": false,
+        "active": {
+          "version": "v1",
+          "digest": "digest-v1"
+        }
+      }
+    }
+  ],
+  "result": {
+    "error": null
+  }
+}
+
+> kai-hour-key-contracts@0.1.0 staging:runtime:verify
+> node scripts/staging-runtime-verify.mjs
+
+{
+  "schemaVersion": "kai-staging-runtime-evidence.v1",
+  "status": "passed",
+  "level": "staging-runtime-rehearsal",
+  "scope": {
+    "networkDisabled": true,
+    "externalNetworkUsed": false,
+    "targetId": "local-loopback-runtime",
+    "realStagingProof": false,
+    "productionProof": false
+  },
+  "scenarios": [
+    {
+      "name": "active_artifact_is_reported_by_runtime",
+      "active": {
+        "version": "v2",
+        "digest": "242d7d4306b4d6694f1f67e275bc44a7717b2441fc05c8ca6655df2a14d4f6dc"
+      },
+      "previous": {
+        "version": "v1",
+        "digest": "e29d8ca58e821c8111b79d9beb8933f36225a1ae7384a58cc55f596a774dc25e"
+      },
+      "health": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "version": "v2",
+          "digest": "242d7d4306b4d6694f1f67e275bc44a7717b2441fc05c8ca6655df2a14d4f6dc"
+        }
+      },
+      "version": {
+        "status": 200,
+        "body": {
+          "version": "v2",
+          "digest": "242d7d4306b4d6694f1f67e275bc44a7717b2441fc05c8ca6655df2a14d4f6dc"
+        }
+      }
+    },
+    {
+      "name": "rollback_restores_previous_artifact",
+      "result": {
+        "status": "rolled_back",
+        "version": "v1",
+        "digest": "e29d8ca58e821c8111b79d9beb8933f36225a1ae7384a58cc55f596a774dc25e"
+      },
+      "slots": {
+        "current": {
+          "version": "v1",
+          "digest": "e29d8ca58e821c8111b79d9beb8933f36225a1ae7384a58cc55f596a774dc25e"
+        },
+        "previous": {
+          "version": "v2",
+          "digest": "242d7d4306b4d6694f1f67e275bc44a7717b2441fc05c8ca6655df2a14d4f6dc"
+        },
+        "releases": {
+          "v1": {
+            "version": "v1",
+            "digest": "e29d8ca58e821c8111b79d9beb8933f36225a1ae7384a58cc55f596a774dc25e"
+          },
+          "v2": {
+            "version": "v2",
+            "digest": "242d7d4306b4d6694f1f67e275bc44a7717b2441fc05c8ca6655df2a14d4f6dc"
+          }
+        }
+      }
+    }
+  ],
+  "result": {
+    "error": null
+  }
+}
+
+> kai-hour-key-contracts@0.1.0 staging:bundle:verify
+> node scripts/staging-bundle.mjs --version local-verify --output /tmp/staging.tar.gz
+
+{
+  "schemaVersion": "kai-staging-bundle.v1",
+  "version": "local-verify",
+  "digest": "31477a54f1bb9010515ca39452ec817f901be661787260a61382fd84012ce127",
+  "bytes": 1902,
+  "archive": "/tmp/staging.tar.gz",
+  "files": [
+    "src/staging-service.mjs",
+    "scripts/staging-service.mjs"
+  ],
+  "installPolicy": "server writes manifest after verifying the archive digest; no npm install or postinstall runs on target"
+}
+
+> kai-hour-key-contracts@0.1.0 security:audit
+> npm audit --audit-level=high
+
+found 0 vulnerabilities

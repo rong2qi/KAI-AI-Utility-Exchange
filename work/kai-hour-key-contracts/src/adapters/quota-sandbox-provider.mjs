@@ -33,6 +33,7 @@ export class QuotaSandboxProviderAdapter {
     this.maxConcurrent = maxConcurrent;
     this.maxRequests = maxRequests;
     this.sandbox = new SandboxProviderAdapter(sandboxOptions);
+    this.providerId = this.sandbox.providerId;
     this.active = 0;
     this.peakConcurrency = 0;
     this.acceptedRequests = 0;

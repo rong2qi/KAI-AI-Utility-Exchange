@@ -19,6 +19,7 @@ const gitCommit = () => {
 const sourceFingerprint = () => createHash('sha256')
   .update(readFileSync(resolve(packageRoot, 'src/concurrency-quota-acceptance.mjs')))
   .update(readFileSync(resolve(packageRoot, 'src/adapters/quota-sandbox-provider.mjs')))
+  .update(readFileSync(resolve(packageRoot, 'src/adapters/sandbox-provider.mjs')))
   .update(readFileSync(fileURLToPath(import.meta.url)))
   .digest('hex');
 
@@ -32,15 +33,20 @@ const request = (index) => ({
 
 const adapter = new QuotaSandboxProviderAdapter({
   maxConcurrent: 10,
-  maxRequests: 10,
+  maxRequests: 100,
   sandboxOptions: { latencyMs: 15 },
 });
 const result = await runConcurrencyQuotaAcceptance({ adapter, buildRequest: request, concurrencyLimit: 10 });
 const evidence = {
   ...result,
+  level: 'local-provider-concurrency-quota',
+  status: result.status === 'passed' && adapter.peakConcurrency === 10 && adapter.active === 0 ? 'passed' : 'failed',
+  localTelemetry: { peakAcceptedConcurrency: adapter.peakConcurrency, activeAfter: adapter.active },
   runId: `local-${new Date().toISOString().replace(/[-:.TZ]/g, '')}`,
   scope: {
     ...result.scope,
+    networkDisabled: true,
+    credentialsUsed: false,
     providerId: 'sandbox-provider-v1',
     nodeVersion: process.version,
     npmVersion: spawnSync('npm', ['--version'], { cwd: packageRoot, encoding: 'utf8' }).stdout.trim(),

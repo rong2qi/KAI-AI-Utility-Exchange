@@ -1,0 +1,57 @@
+name: KAI Dahono capacity acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      window_start:
+        description: 'Confirmed booking start, ISO 8601 with timezone (Asia/Shanghai is +08:00)'
+        required: true
+        type: string
+      window_end:
+        description: 'Exclusive booking end, exactly 1 hour after start'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kai-dahono-live
+  cancel-in-progress: false
+
+jobs:
+  capacity:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: staging
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: work/kai-hour-key-contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: work/kai-hour-key-contracts/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify the exact candidate offline
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+      - name: Run bounded acceptance inside the confirmed window
+        env:
+          DAHONO_API_KEY: ${{ secrets.DAHONO_API_KEY }}
+          DAHONO_WINDOW_START: ${{ inputs.window_start }}
+          DAHONO_WINDOW_END: ${{ inputs.window_end }}
+        run: npm run dahono:capacity:verify -- --confirm-live
+      - name: Preserve redacted evidence even when a claim is not proven
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kai-dahono-capacity-${{ github.run_id }}-${{ github.run_attempt }}
+          path: work/kai-hour-key-contracts/evidence/dahono-capacity/
+          retention-days: 30
+          if-no-files-found: error

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "kai-dahono-capacity-run.v1",
+  "status": "blocked",
+  "reason": "LIVE_CONFIRMATION_REQUIRED",
+  "scope": {
+    "networkAttempted": false,
+    "networkUsed": false,
+    "credentialsUsed": false,
+    "credentialResolved": false,
+    "postRequestsIssued": 0,
+    "getRequestsIssued": 0,
+    "maxPostRequests": 14,
+    "maxDurationMs": 300000,
+    "fullHourlyQuotaProven": false
+  },
+  "claims": {
+    "firstTenSucceeded": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    },
+    "overlapObserved": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    },
+    "overload429": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    },
+    "concurrencySpecific429": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    },
+    "smallSampleAccounting": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    }
+  },
+  "requests": [],
+  "snapshots": [],
+  "overlap": {
+    "unfinishedAtOverflow": 0
+  },
+  "runId": "local-b5a20a49-7928-4ff4-ac59-c3fa1c67906c",
+  "recordedAt": "2026-10-06T03:44:43.935Z",
+  "source": {
+    "commit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "workingTreeDirty": true,
+    "sha256": "a9ecf9b81aa7a7e89e18ae789ae93dd19626ecb67c00b2ba04b36a19c2597158",
+    "files": [
+      "src/dahono-capacity-acceptance.mjs",
+      "src/adapters/dahono-router-provider.mjs",
+      "scripts/dahono-capacity-verify.mjs",
+      "package-lock.json"
+    ],
+    "nodeVersion": "v24.21.0"
+  }
+}

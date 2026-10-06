@@ -5,10 +5,12 @@ on:
     paths:
       - 'work/kai-hour-key-contracts/**'
       - '.github/workflows/hour-key-contract-ci.yml'
+      - '.github/workflows/kai-dahono-capacity.yml'
   pull_request:
     paths:
       - 'work/kai-hour-key-contracts/**'
       - '.github/workflows/hour-key-contract-ci.yml'
+      - '.github/workflows/kai-dahono-capacity.yml'
   workflow_dispatch:
 
 permissions:
@@ -61,6 +63,15 @@ jobs:
           set -e
           test "$status" -eq 2
 
+      - name: Verify Dahono capacity acceptance remains gated
+        run: |
+          mkdir -p evidence/dahono-capacity
+          set +e
+          npm run dahono:capacity:verify > evidence/dahono-capacity/guard.log 2>&1
+          status=$?
+          set -e
+          test "$status" -eq 2
+
       - name: Upload immutable CI evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -74,6 +85,7 @@ jobs:
             work/kai-hour-key-contracts/evidence/upstream-provider-contract/
             work/kai-hour-key-contracts/evidence/upstream-provider-live/
             work/kai-hour-key-contracts/evidence/dahono-provider/
+            work/kai-hour-key-contracts/evidence/dahono-capacity/
             work/kai-hour-key-contracts/evidence/staging-rehearsal/
             work/kai-hour-key-contracts/evidence/staging-gate/
             work/kai-hour-key-contracts/evidence/staging-target/

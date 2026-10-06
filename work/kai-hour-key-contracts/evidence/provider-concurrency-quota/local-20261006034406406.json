@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "kai-provider-concurrency-quota-evidence.v2",
+  "status": "passed",
+  "level": "local-provider-concurrency-quota",
+  "startedAt": "2026-10-06T03:44:06.388Z",
+  "scope": {
+    "concurrencyLimit": 10,
+    "requestsIssued": 11,
+    "networkDisabled": true,
+    "credentialsUsed": false,
+    "providerId": "sandbox-provider-v1",
+    "nodeVersion": "v24.21.0",
+    "npmVersion": "11.19.0",
+    "gitCommit": "21f906e32748de2bb448761d144abea9a09c3a3b",
+    "sourceFingerprint": "90ae9f7bd111ddf6b0eb3829a7880c10dcd62bcfb38f75997a82ba12ab0b29c0"
+  },
+  "claim": "前 N 个请求成功且用量合法，第 N+1 个请求返回可重试限流",
+  "doesNotProve": [
+    "accepted_stream_overlap",
+    "rate_limit_cause",
+    "hourly_quota",
+    "transport_isolation"
+  ],
+  "checks": {
+    "successfulRequests": true,
+    "rateLimitedRequests": true,
+    "usageTotals": true
+  },
+  "failedChecks": [],
+  "results": {
+    "successfulRequests": 10,
+    "successfulRequestIndexes": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "rateLimitedRequests": 1,
+    "rateLimitedRequestIndexes": [
+      10
+    ],
+    "usage": {
+      "inputUnits": 40,
+      "outputUnits": 10,
+      "totalUnits": 50
+    },
+    "errors": [
+      {
+        "index": 10,
+        "code": "PROVIDER_RATE_LIMITED",
+        "retryable": true
+      }
+    ]
+  },
+  "localTelemetry": {
+    "peakAcceptedConcurrency": 10,
+    "activeAfter": 0
+  },
+  "runId": "local-20261006034406406"
+}

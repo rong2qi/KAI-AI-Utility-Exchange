@@ -14,7 +14,7 @@
 8. 执行 `staging:runtime:verify`，验证本地 loopback 服务能回读当前版本与摘要，并验证当前/上一制品槽位回滚；
 9. 上传 JSON 证据、Provider Sandbox 证据、本地 HTTP Sandbox 证据、staging rehearsal、staging gate、staging target 证据和原始测试日志。
 
-Dahono 模型池也有独立的受保护入口：CI 会验证 `dahono:live:smoke` 在没有显式确认时不读取密钥、不出网并返回 `blocked`；实际执行使用手动的 `KAI Dahono live smoke` 工作流，由 `staging` 环境审批后注入 `DAHONO_API_KEY`。真实 live smoke 只能在密钥和有效预约窗口同时就绪后触发；门禁通过不等于真实推理通过。
+Dahono 模型池有两个独立的受保护入口：单次 `dahono:live:smoke` 和有界容量验收 `dahono:capacity:verify`。CI 验证二者在没有显式确认时不读取密钥、不出网并返回 `blocked`；实际执行使用对应手动工作流，由 `staging` 环境审批后注入 `DAHONO_API_KEY`。二者共享 `kai-dahono-live` 并发组，避免同仓库测试互相占用额度；外部调用仍需由操作者隔离。容量工作流要求已预约的精确起止时间，最多 14 次推理、2 次遥测读取、5 分钟、零自动重试。门禁或模拟测试通过不等于真实推理或容量通过。
 
 npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.json。JSON 包含运行时间、Node/npm 版本、测试退出码、Git 修订（若当前目录属于 Git 仓库）以及排除生成目录后的源码 SHA-256 指纹。原始日志用于复核输出，JSON 用于机器读取。失败运行也会上传证据，避免只保留绿色结果。
 
@@ -22,9 +22,9 @@ npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.j
 
 CI 的通过结论限定为：
 
-> 在触发工作流的源码修订、Node 22 和 Node 24 矩阵、锁定依赖和 Ubuntu runner 上，npm test 返回退出码 0。
+> 在触发工作流的源码修订、Node 22、锁定依赖和 Ubuntu runner 上，npm test 返回退出码 0。
 
-它不等同于真实 Provider、持久化存储、交易执行或生产部署已经通过。`staging-rehearsal`、`staging-gate-rehearsal` 和 `staging-runtime-rehearsal` 仍是本地故障、发布门禁、回滚和运行入口演练；真实 staging 另由受保护部署工作流和 `staging-remote` 证据证明。远端证据只覆盖隔离服务、制品摘要、健康检查、显式回滚和审计，不覆盖整台共享主机或生产业务流量。`engines` 声明 Node 22 至 Node 24 的支持范围，矩阵用于验证最低和当前支持版本。
+它不等同于真实 Provider、持久化存储、交易执行或生产部署已经通过。`staging-rehearsal`、`staging-gate-rehearsal` 和 `staging-runtime-rehearsal` 仍是本地故障、发布门禁、回滚和运行入口演练；真实 staging 另由受保护部署工作流和 `staging-remote` 证据证明。当前远端成功记录覆盖隔离服务、制品摘要、健康检查、当前/上一版识别和审计；回滚代码存在，但真实故障回滚仍需单独演练。`engines` 声明 Node 22 至 Node 24 的支持范围；当前远端工作流只运行 Node 22，本机 Node 24 结果单独记证，不能称为远端双版本矩阵。
 
 用户验收层与内部证据分开：用户只看到 `可发布`、`已激活`、`已自动回滚` 或 `需要处理`；源码、锁文件、运行时、Provider、摘要和 gateId 由系统自动核对并保留在证据中。`可发布`只来自无副作用预检，真正写入成功后才显示 `已激活`。
 
@@ -33,6 +33,8 @@ CI 的通过结论限定为：
 当前工作流已把 lint、TypeScript 类型检查和覆盖率阈值纳入通过条件。`npm audit --audit-level=high` 会同时检查运行时和开发依赖；它不是完整 SAST，仍需在安全工具和规则固定后另行接入。覆盖率阈值是合同包整体阈值，不代表每个文件都达到同一比例。
 
 2026-10-05 起，真实远端证据已建立：GitHub contract CI run `37255589035` 成功，staging deploy run `37254995986` 的第 3 次尝试在 `staging` 环境经 `rong2qi` 审批后成功。部署目标是共享生产主机上的隔离服务，不代表整台主机或生产业务流量已被验证。脱敏记录见 `work/kai-hour-key-contracts/evidence/staging-remote/`。
+
+2026-10-06 Dahono 有界容量入口切片：本地 `quality:verify` 通过 146/146 测试，行/分支/函数覆盖率分别为 93.75% / 78.77% / 93.60%，依赖审计 0 漏洞。原始日志为 `work/kai-hour-key-contracts/evidence/dahono-capacity/local-quality-20261006.log`。独立回读发现并修复 429 原因归因过度和测试覆盖正式证据文件两项问题，再次定向验证 14/14 通过。默认命令实测 `blocked`、未出网、未使用凭据；这些是离线实现证据，真实容量结果仍待新窗口。
 
 ## CD 的建议门禁
 

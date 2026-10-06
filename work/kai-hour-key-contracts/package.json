@@ -21,6 +21,7 @@
     "xfyun:live:smoke": "node scripts/xfyun-live-smoke.mjs",
     "dahono:staging:secret": "bash scripts/install-dahono-staging-secret.sh",
     "dahono:live:smoke": "node scripts/dahono-live-smoke.mjs",
+    "dahono:capacity:verify": "node scripts/dahono-capacity-verify.mjs",
     "concurrency:quota:verify": "node scripts/concurrency-quota-verify.mjs",
     "staging:rehearsal:verify": "node scripts/staging-rehearsal-verify.mjs",
     "staging:gate:verify": "node scripts/staging-gate-verify.mjs",

@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: kai-dahono-live-smoke
+  group: kai-dahono-live
   cancel-in-progress: false
 
 jobs:
