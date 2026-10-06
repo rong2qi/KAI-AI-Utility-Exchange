@@ -36,6 +36,8 @@ CI 的通过结论限定为：
 
 2026-10-06 Dahono 有界容量入口切片：本地 `quality:verify` 通过 146/146 测试，行/分支/函数覆盖率分别为 93.75% / 78.77% / 93.60%，依赖审计 0 漏洞。原始日志为 `work/kai-hour-key-contracts/evidence/dahono-capacity/local-quality-20261006.log`。独立回读发现并修复 429 原因归因过度和测试覆盖正式证据文件两项问题，再次定向验证 14/14 通过。默认命令实测 `blocked`、未出网、未使用凭据；这些是离线实现证据，真实容量结果仍待新窗口。
 
+对应远端 [contract CI run 37410477935](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37410477935) 已成功，源码为 `a8fac380166b078613c242b8da69e2aafa4f17af`，Node `22.23.3`。质量门、测试和三项 live 门禁检查均成功；artifact `kai-hour-key-ci-evidence-37410477935-1`（ID `11388839326`）的 SHA-256 为 `17d7e21890213798420bc7846f4c3081b662549b5db45c46e7a529c7e11fa211`。已下载至 `work/kai-hour-key-contracts/evidence/ci/github-37410477935-artifact/`，回读测试状态与容量 guard 的未出网/未用凭据字段相符。因本切片没有更改服务器运行制品，自动触发且等待审批的重复部署 run `37410477934` 已取消；此前成功部署不受影响。
+
 ## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：
