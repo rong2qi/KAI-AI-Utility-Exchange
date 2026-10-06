@@ -38,6 +38,8 @@ CI 的通过结论限定为：
 
 对应远端 [contract CI run 37410477935](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37410477935) 已成功，源码为 `a8fac380166b078613c242b8da69e2aafa4f17af`，Node `22.23.3`。质量门、测试和三项 live 门禁检查均成功；artifact `kai-hour-key-ci-evidence-37410477935-1`（ID `11388839326`）的 SHA-256 为 `17d7e21890213798420bc7846f4c3081b662549b5db45c46e7a529c7e11fa211`。已下载至 `work/kai-hour-key-contracts/evidence/ci/github-37410477935-artifact/`，回读测试状态与容量 guard 的未出网/未用凭据字段相符。因本切片没有更改服务器运行制品，自动触发且等待审批的重复部署 run `37410477934` 已取消；此前成功部署不受影响。
 
+17 点受保护真实容量验收 [run 37440028834](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37440028834) 已执行一次，源码 `2027450c7fd364276599e775f762e256e1f155d1` 的运行代码与上述已审核版本一致。离线检查通过，live 步骤结论 `failure`：十次请求本身均成功且匹配预约，但 `/models` 与 chat 的 slot 身份不一致，客户端十路重叠未观察到，故未发第十一路和后续样本。不能将 CI 成功替代这些尚未证明的容量边界。原始 live JSON SHA-256 为 `7b73255e52438d6d900496cc38954629e865ed8747529661c2eedd3a2ef20379`；artifact ID `11400224330`，摘要 `6d52b655683a3049186455f55c2ccbc5456035e0193666eb1a047ff26e69f629`，完整下载保存在 `work/kai-hour-key-contracts/evidence/dahono-capacity/artifacts-37440028834-1/`。执行文件指纹已独立重算匹配；原始证据同时报告 `workingTreeDirty=true`，因此不宣称 runner 整体工作树干净。具体结果和派生解释由 `work/kai-hour-key-contracts/evidence/dahono-capacity/LATEST-LIVE.json` 指向，原始失败记录不改写。
+
 ## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：

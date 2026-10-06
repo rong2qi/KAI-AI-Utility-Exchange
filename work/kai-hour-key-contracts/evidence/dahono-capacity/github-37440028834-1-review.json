@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "kai-dahono-capacity-review.v1",
+  "status": "partial_facts_proven_full_acceptance_not_met",
+  "runId": 37440028834,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37440028834",
+  "rawEvidenceFile": "github-37440028834-1-live.json",
+  "rawEvidenceSha256": "7b73255e52438d6d900496cc38954629e865ed8747529661c2eedd3a2ef20379",
+  "rawStatus": "failed",
+  "source": {
+    "commit": "2027450c7fd364276599e775f762e256e1f155d1",
+    "fingerprintMatches": true,
+    "workingTreeDirtyReported": true
+  },
+  "execution": {
+    "elapsedSeconds": 25.442,
+    "postRequestsIssued": 10,
+    "getRequestsIssued": 1,
+    "reruns": 0,
+    "withinAuthorizedWindow": true
+  },
+  "observations": {
+    "successfulChatRequests": 10,
+    "chatSlotMatchesConfirmedBooking": true,
+    "modelsSlotMatchesConfirmedBooking": false,
+    "modelsAndChatSlotIdentityConsistent": false,
+    "usage": {
+      "inputUnits": 20310,
+      "outputUnits": 4990,
+      "totalUnits": 25300
+    },
+    "peakClientObservedOpenSse": 7,
+    "unfinishedAtLastResponseHeaders": 5,
+    "peakProviderReportedActive": 10
+  },
+  "notProven": [
+    "ten_client_observed_overlapping_streams",
+    "eleventh_request_429",
+    "concurrency_specific_429",
+    "small_sample_accounting",
+    "full_hourly_quota",
+    "production_traffic_safety"
+  ],
+  "interpretation": "All ten chat calls completed in the booked slot. The raw combined success-and-preflight-slot check failed because /models used a different slot identity. The eleventh request and later samples were not issued. Provider counters do not replace independently observed overlap.",
+  "artifact": {
+    "id": 11400224330,
+    "name": "kai-dahono-capacity-37440028834-1",
+    "sha256": "6d52b655683a3049186455f55c2ccbc5456035e0193666eb1a047ff26e69f629",
+    "localDirectory": "artifacts-37440028834-1"
+  },
+  "review": {
+    "independentReadback": "completed",
+    "rawEvidencePreserved": true
+  },
+  "followUp": "Separate booked-slot binding from /models discovery metadata; independently assess success, observable overlap and accounting. Reproduce offline before considering another explicitly authorized live run."
+}

@@ -1,0 +1,302 @@
+{
+  "schemaVersion": "kai-dahono-capacity-run.v1",
+  "status": "failed",
+  "reason": "LIMITED_CLAIMS_ONLY",
+  "scope": {
+    "networkAttempted": true,
+    "networkUsed": true,
+    "credentialsUsed": true,
+    "credentialResolved": true,
+    "postRequestsIssued": 10,
+    "getRequestsIssued": 1,
+    "maxPostRequests": 14,
+    "maxDurationMs": 300000,
+    "fullHourlyQuotaProven": false
+  },
+  "claims": {
+    "firstTenSucceeded": {
+      "verdict": "failed",
+      "reason": "RESPONSE_OR_SLOT_INVALID"
+    },
+    "overlapObserved": {
+      "verdict": "not_proven",
+      "reason": "TEN_STREAM_OVERLAP_NOT_OBSERVED"
+    },
+    "overload429": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    },
+    "concurrencySpecific429": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    },
+    "smallSampleAccounting": {
+      "verdict": "not_proven",
+      "reason": "NOT_RUN"
+    }
+  },
+  "requests": [
+    {
+      "index": 0,
+      "status": "succeeded",
+      "headersAt": 1791277295582,
+      "completedAt": 1791277298475,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 1,
+        "concurrencyRemaining": 9,
+        "remainingRpm": 9,
+        "hourlyReqRemaining": 599,
+        "hourlyTokensInput": 18,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 1,
+      "status": "succeeded",
+      "headersAt": 1791277296283,
+      "completedAt": 1791277317857,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 8,
+        "concurrencyRemaining": 2,
+        "remainingRpm": 2,
+        "hourlyReqRemaining": 592,
+        "hourlyTokensInput": 144,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 2,
+      "status": "succeeded",
+      "headersAt": 1791277298545,
+      "completedAt": 1791277306573,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 9,
+        "concurrencyRemaining": 1,
+        "remainingRpm": 1,
+        "hourlyReqRemaining": 591,
+        "hourlyTokensInput": 162,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 3,
+      "status": "succeeded",
+      "headersAt": 1791277295235,
+      "completedAt": 1791277301408,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 2,
+        "concurrencyRemaining": 8,
+        "remainingRpm": 8,
+        "hourlyReqRemaining": 598,
+        "hourlyTokensInput": 36,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 4,
+      "status": "succeeded",
+      "headersAt": 1791277303957,
+      "completedAt": 1791277308244,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 4,
+        "concurrencyRemaining": 6,
+        "remainingRpm": 6,
+        "hourlyReqRemaining": 596,
+        "hourlyTokensInput": 72,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 5,
+      "status": "succeeded",
+      "headersAt": 1791277295172,
+      "completedAt": 1791277300549,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 3,
+        "concurrencyRemaining": 7,
+        "remainingRpm": 7,
+        "hourlyReqRemaining": 597,
+        "hourlyTokensInput": 54,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 6,
+      "status": "succeeded",
+      "headersAt": 1791277305491,
+      "completedAt": 1791277310739,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 10,
+        "concurrencyRemaining": 0,
+        "remainingRpm": 0,
+        "hourlyReqRemaining": 590,
+        "hourlyTokensInput": 180,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 7,
+      "status": "succeeded",
+      "headersAt": 1791277295647,
+      "completedAt": 1791277298927,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 6,
+        "concurrencyRemaining": 4,
+        "remainingRpm": 4,
+        "hourlyReqRemaining": 594,
+        "hourlyTokensInput": 108,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 8,
+      "status": "succeeded",
+      "headersAt": 1791277294578,
+      "completedAt": 1791277305355,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 5,
+        "concurrencyRemaining": 5,
+        "remainingRpm": 5,
+        "hourlyReqRemaining": 595,
+        "hourlyTokensInput": 90,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    },
+    {
+      "index": 9,
+      "status": "succeeded",
+      "headersAt": 1791277296400,
+      "completedAt": 1791277308156,
+      "cancelledAt": null,
+      "httpStatus": 200,
+      "diagnostics": {
+        "slotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+        "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+        "concurrencyActive": 7,
+        "concurrencyRemaining": 3,
+        "remainingRpm": 3,
+        "hourlyReqRemaining": 593,
+        "hourlyTokensInput": 126,
+        "hourlyTokensOutput": 0
+      },
+      "usage": {
+        "inputUnits": 2031,
+        "outputUnits": 499,
+        "totalUnits": 2530
+      }
+    }
+  ],
+  "snapshots": [
+    {
+      "observedAt": 1791277292971,
+      "slotIdHash": "853b713abd820a87540825304d7e29f47dcd4576512f81bb01ce1539ffe79814",
+      "serverRegionHash": "3843971dcfdee5083e6289e1bbdbb003e538b5a8a668fc43ae4f19d415ac18a2",
+      "concurrencyActive": 0,
+      "concurrencyRemaining": 10,
+      "remainingRpm": 10,
+      "hourlyReqRemaining": 600,
+      "hourlyTokensInput": 0,
+      "hourlyTokensOutput": 0
+    }
+  ],
+  "overlap": {
+    "unfinishedAtOverflow": 5
+  },
+  "startedAt": "2026-10-06T09:01:32.418Z",
+  "finishedAt": "2026-10-06T09:01:57.860Z",
+  "runId": "github-37440028834-1-live",
+  "recordedAt": "2026-10-06T09:01:57.869Z",
+  "source": {
+    "commit": "2027450c7fd364276599e775f762e256e1f155d1",
+    "workingTreeDirty": true,
+    "sha256": "a9ecf9b81aa7a7e89e18ae789ae93dd19626ecb67c00b2ba04b36a19c2597158",
+    "files": [
+      "src/dahono-capacity-acceptance.mjs",
+      "src/adapters/dahono-router-provider.mjs",
+      "scripts/dahono-capacity-verify.mjs",
+      "package-lock.json"
+    ],
+    "nodeVersion": "v22.23.3"
+  }
+}

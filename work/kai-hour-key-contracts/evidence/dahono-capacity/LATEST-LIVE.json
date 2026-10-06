@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "kai-dahono-capacity-live-pointer.v1",
+  "latestEvidenceFile": "evidence/dahono-capacity/github-37440028834-1-live.json",
+  "reviewFile": "evidence/dahono-capacity/github-37440028834-1-review.json",
+  "rawStatus": "failed",
+  "reviewStatus": "partial_facts_proven_full_acceptance_not_met"
+}
