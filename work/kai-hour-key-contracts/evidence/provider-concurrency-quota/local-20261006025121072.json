@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "kai-provider-concurrency-quota-evidence.v1",
+  "status": "passed",
+  "level": "local-provider-concurrency-quota",
+  "startedAt": "2026-10-06T02:51:21.054Z",
+  "scope": {
+    "networkDisabled": true,
+    "credentialsUsed": false,
+    "concurrencyLimit": 10,
+    "requestsIssued": 11,
+    "providerId": "sandbox-provider-v1",
+    "nodeVersion": "v24.21.0",
+    "npmVersion": "11.19.0",
+    "gitCommit": "b0f034b6ccaf8e53ea54c2fb8689ee0bf17373df",
+    "sourceFingerprint": "9cc3f1dbc199fa406d82f61dd3c7b1fafe0a28dbb71103795a8fc2efe4cbf852"
+  },
+  "claim": "本地可替换 Provider 在并发上限内完成请求，并对第 N+1 路返回可重试限流，同时汇总 token 用量",
+  "checks": {
+    "successfulRequests": true,
+    "rateLimitedRequests": true,
+    "usageTotals": true,
+    "peakConcurrency": true
+  },
+  "failedChecks": [],
+  "results": {
+    "successfulRequests": 10,
+    "successfulRequestIndexes": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "rateLimitedRequests": 1,
+    "rateLimitedRequestIndexes": [
+      10
+    ],
+    "usage": {
+      "inputUnits": 40,
+      "outputUnits": 10,
+      "totalUnits": 50
+    },
+    "peakConcurrency": 10,
+    "errors": [
+      {
+        "index": 10,
+        "code": "PROVIDER_RATE_LIMITED",
+        "retryable": true
+      }
+    ]
+  },
+  "runId": "local-20261006025121072"
+}
