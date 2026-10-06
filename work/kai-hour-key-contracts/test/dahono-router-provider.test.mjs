@@ -121,11 +121,60 @@ test('resolves the key inside the adapter and never exposes it in result or erro
 test('rejects unsupported endpoint, scope, malformed input, and missing credentials before network access', async () => {
   const fetchImpl = async () => { throw new Error('network should not be called'); };
   assert.throws(() => new DahonoRouterProviderAdapter({ apiKeyResolver: () => 'key', endpoint: 'https://example.test/v1/chat/completions', fetchImpl }), /DAHONO_ENDPOINT_NOT_ALLOWED/);
+  assert.throws(() => new DahonoRouterProviderAdapter({ apiKeyResolver: () => 'key', endpoint: 'https://user:pass@kai.dahono.com/v1/chat/completions', fetchImpl }), /DAHONO_ENDPOINT_NOT_ALLOWED/);
+  assert.throws(() => new DahonoRouterProviderAdapter({ apiKeyResolver: () => 'key', endpoint: 'https://kai.dahono.com:444/v1/chat/completions', fetchImpl }), /DAHONO_ENDPOINT_NOT_ALLOWED/);
   const adapter = new DahonoRouterProviderAdapter({ apiKeyResolver: () => 'key', fetchImpl, networkMode: 'live' });
   await assert.rejects(adapter.execute(request({ model: 'other-model' })), (error) => error.code === 'PROVIDER_SCOPE_UNSUPPORTED');
   await assert.rejects(adapter.execute(request({ input: { messages: [] }, idempotencyKey: 'dahono-invalid-1' })), (error) => error.code === 'REQUEST_INVALID');
   const missing = new DahonoRouterProviderAdapter({ apiKeyResolver: () => undefined, fetchImpl, networkMode: 'live' });
   await assert.rejects(missing.execute(request({ idempotencyKey: 'dahono-missing-1' })), (error) => error.code === 'PROVIDER_CREDENTIAL_REQUIRED');
+});
+
+const assertInvalidSse = async (events, idempotencyKey) => {
+  const adapter = adapterWith(async () => sseResponse(events));
+  await assert.rejects(adapter.execute(request({ idempotencyKey })), (error) => error.code === 'PROVIDER_RESPONSE_INVALID');
+};
+
+test('keeps SSE identity stable, rejects model changes and multiple choices, and requires a final finish reason', async () => {
+  await assertInvalidSse([
+    { id: 'first', model: DAHONO_ROUTER_MODEL, choices: [{ delta: { content: 'a' }, finish_reason: null }] },
+    { id: 'second', choices: [{ delta: { content: 'b' }, finish_reason: 'stop' }] },
+    { usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } },
+  ], 'dahono-id-change-1');
+  await assertInvalidSse([
+    { id: 'model-change', model: 'other-model', choices: [{ delta: { content: 'a' }, finish_reason: 'stop' }] },
+    { usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } },
+  ], 'dahono-model-change-1');
+  await assertInvalidSse([
+    { id: 'multi-choice', model: DAHONO_ROUTER_MODEL, choices: [
+      { delta: { content: 'a' }, finish_reason: null },
+      { delta: { content: 'b' }, finish_reason: null },
+    ] },
+    { usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } },
+  ], 'dahono-multi-choice-1');
+  await assertInvalidSse([
+    { id: 'missing-finish', model: DAHONO_ROUTER_MODEL, choices: [{ delta: { content: 'a' }, finish_reason: null }] },
+    { usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } },
+  ], 'dahono-missing-finish-1');
+});
+
+test('allows usage:null intermediate blocks but requires safe, consistent final usage', async () => {
+  const adapter = adapterWith(async () => sseResponse([
+    { id: 'usage-null', model: DAHONO_ROUTER_MODEL, choices: [{ delta: { content: 'ok' }, finish_reason: null }] },
+    { id: 'usage-null', usage: null, choices: [] },
+    { id: 'usage-null', choices: [{ delta: {}, finish_reason: 'stop' }] },
+    { id: 'usage-null', usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } },
+  ]));
+  const result = await adapter.execute(request({ idempotencyKey: 'dahono-usage-null-1' }));
+  assert.deepEqual(result.usage, { inputUnits: 1, outputUnits: 1, totalUnits: 2 });
+  await assertInvalidSse([
+    { id: 'unsafe-usage', choices: [{ delta: { content: 'a' }, finish_reason: 'stop' }] },
+    { usage: { prompt_tokens: Number.MAX_SAFE_INTEGER + 1, completion_tokens: 1, total_tokens: Number.MAX_SAFE_INTEGER + 2 } },
+  ], 'dahono-unsafe-usage-1');
+  await assertInvalidSse([
+    { id: 'mismatched-usage', choices: [{ delta: { content: 'a' }, finish_reason: 'stop' }] },
+    { usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 3 } },
+  ], 'dahono-mismatched-usage-1');
 });
 
 test('default construction is network-disabled and does not read a key or call fetch', async () => {
@@ -183,6 +232,60 @@ test('maps aborts to a retryable timeout and rejects malformed SSE or missing us
     { id: 'chatcmpl-no-usage', choices: [{ delta: { content: 'x' }, finish_reason: 'stop' }] },
   ]));
   await assert.rejects(missingUsage.execute(request({ idempotencyKey: 'dahono-missing-usage-1' })), (error) => error.code === 'PROVIDER_RESPONSE_INVALID');
+});
+
+const trackedReadableResponse = ({ status = 200, chunks = [], pending = false } = {}) => {
+  const state = { cancelCalls: 0, releaseCalls: 0, readCalls: 0 };
+  let cursor = 0;
+  const reader = {
+    async read() {
+      state.readCalls += 1;
+      if (pending) return new Promise(() => {});
+      if (cursor >= chunks.length) return { done: true, value: undefined };
+      return { done: false, value: Buffer.from(chunks[cursor++]) };
+    },
+    async cancel() {
+      state.cancelCalls += 1;
+    },
+    releaseLock() {
+      state.releaseCalls += 1;
+    },
+  };
+  return {
+    state,
+    response: {
+      status,
+      ok: status >= 200 && status < 300,
+      headers: new Headers({ 'content-type': status === 200 ? 'text/event-stream' : 'application/json', ...diagnostics }),
+      body: { getReader: () => reader },
+    },
+  };
+};
+
+test('cancels and releases response readers on malformed, oversized, timeout, and HTTP-error paths', async () => {
+  const malformed = trackedReadableResponse({ chunks: ['data: {"id":"bad","choices":[]}\n\n', 'data: [DONE]\n\n'] });
+  const malformedAdapter = adapterWith(async () => malformed.response);
+  await assert.rejects(malformedAdapter.execute(request({ idempotencyKey: 'dahono-release-malformed-1' })), (error) => error.code === 'PROVIDER_RESPONSE_INVALID');
+  assert.ok(malformed.state.cancelCalls > 0);
+  assert.ok(malformed.state.releaseCalls > 0);
+
+  const oversized = trackedReadableResponse({ chunks: ['x'.repeat(1024)] });
+  const oversizedAdapter = adapterWith(async () => oversized.response, { maxResponseBytes: 16 });
+  await assert.rejects(oversizedAdapter.execute(request({ idempotencyKey: 'dahono-release-oversized-1' })), (error) => error.code === 'PROVIDER_RESPONSE_INVALID');
+  assert.ok(oversized.state.cancelCalls > 0);
+  assert.ok(oversized.state.releaseCalls > 0);
+
+  const timeout = trackedReadableResponse({ pending: true });
+  const timeoutAdapter = adapterWith(async () => timeout.response, { timeoutMs: 5 });
+  await assert.rejects(timeoutAdapter.execute(request({ idempotencyKey: 'dahono-release-timeout-1' })), (error) => error.code === 'PROVIDER_TIMEOUT');
+  assert.ok(timeout.state.cancelCalls > 0);
+  assert.ok(timeout.state.releaseCalls > 0);
+
+  const httpError = trackedReadableResponse({ status: 503, chunks: ['upstream body'] });
+  const httpAdapter = adapterWith(async () => httpError.response);
+  await assert.rejects(httpAdapter.execute(request({ idempotencyKey: 'dahono-release-http-1' })), (error) => error.code === 'PROVIDER_HTTP_ERROR');
+  assert.ok(httpError.state.cancelCalls > 0);
+  assert.ok(httpError.state.releaseCalls > 0);
 });
 
 test('accepts prompt input and keeps optional request parameters bounded', async () => {

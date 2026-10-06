@@ -17,7 +17,7 @@ const DIAGNOSTIC_HEADERS = Object.freeze([
 
 const ALLOWED_ROLES = new Set(['system', 'user', 'assistant', 'tool']);
 const RETRYABLE_STATUS = (status) => status === 408 || status === 425 || status === 429 || status >= 500;
-const isFiniteNonNegativeInteger = (value) => Number.isInteger(value) && value >= 0;
+const isFiniteNonNegativeInteger = (value) => Number.isSafeInteger(value) && value >= 0;
 const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -35,7 +35,7 @@ const normalizeUsage = (usage) => {
   const outputUnits = usage.completion_tokens;
   if (!isFiniteNonNegativeInteger(inputUnits) || !isFiniteNonNegativeInteger(outputUnits)) return undefined;
   const totalUnits = usage.total_tokens === undefined ? inputUnits + outputUnits : usage.total_tokens;
-  if (!isFiniteNonNegativeInteger(totalUnits)) return undefined;
+  if (!isFiniteNonNegativeInteger(totalUnits) || totalUnits !== inputUnits + outputUnits) return undefined;
   return { inputUnits, outputUnits, totalUnits };
 };
 
@@ -140,7 +140,7 @@ const parseDiagnostics = (headers) => {
   return diagnostics;
 };
 
-const parseSseResponse = (text, headers, maxEvents) => {
+const parseSseResponse = (text, headers, maxEvents, expectedModel) => {
   const events = parseSseEvents(text, maxEvents);
   let providerRequestId;
   let model;
@@ -152,14 +152,24 @@ const parseSseResponse = (text, headers, maxEvents) => {
 
   for (const event of events) {
     if (!isPlainObject(event)) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono SSE 事件结构无效');
-    if (providerRequestId === undefined && typeof event.id === 'string' && event.id.length > 0) providerRequestId = event.id;
-    if (model === undefined && typeof event.model === 'string' && event.model.length > 0) model = event.model;
-    if (event.usage !== undefined) {
+    if (event.id !== undefined) {
+      if (typeof event.id !== 'string' || event.id.length === 0) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono id 结构无效');
+      if (providerRequestId !== undefined && event.id !== providerRequestId) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono SSE id 在响应中发生变化');
+      providerRequestId ??= event.id;
+    }
+    if (event.model !== undefined) {
+      if (typeof event.model !== 'string' || event.model.length === 0) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono model 结构无效');
+      if (model !== undefined && event.model !== model) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono SSE model 在响应中发生变化');
+      if (event.model !== expectedModel) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono 响应模型与请求模型不一致');
+      model ??= event.model;
+    }
+    if (event.usage !== undefined && event.usage !== null) {
       usage = normalizeUsage(event.usage);
       if (!usage) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono usage 缺少有效 token 计数');
     }
     if (event.choices !== undefined) {
       if (!Array.isArray(event.choices)) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono choices 结构无效');
+      if (event.choices.length > 1) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono SSE 只允许一个 choice');
       for (const choice of event.choices) {
         if (!isPlainObject(choice)) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono choice 结构无效');
         sawChoice = true;
@@ -184,7 +194,7 @@ const parseSseResponse = (text, headers, maxEvents) => {
     }
   }
 
-  if (!providerRequestId || !sawChoice || !usage) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono 响应缺少 id、choices 或 usage');
+  if (!providerRequestId || !sawChoice || !usage || !finishReason) throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono 响应缺少 id、choices、usage 或 finish_reason');
   return {
     providerRequestId,
     output: {
@@ -218,6 +228,20 @@ const readWithAbort = (operation, signal) => {
   });
 };
 
+const cancelReader = (reader) => {
+  try {
+    const result = reader.cancel?.();
+    result?.catch?.(() => {});
+  } catch {
+    // The body is already closed or does not support cancellation.
+  }
+  try {
+    reader.releaseLock?.();
+  } catch {
+    // Releasing an already released reader is harmless.
+  }
+};
+
 const readResponseText = async (response, maxBytes, signal) => {
   const chunks = [];
   let size = 0;
@@ -229,17 +253,43 @@ const readResponseText = async (response, maxBytes, signal) => {
   };
   if (response.body?.getReader) {
     const reader = response.body.getReader();
-    while (true) {
-      const item = await readWithAbort(reader.read(), signal);
-      if (item.done) break;
-      append(item.value);
+    let completed = false;
+    try {
+      while (true) {
+        const item = await readWithAbort(reader.read(), signal);
+        if (item.done) break;
+        append(item.value);
+      }
+      completed = true;
+    } finally {
+      if (!completed) cancelReader(reader);
+      else {
+        try {
+          reader.releaseLock?.();
+        } catch {
+          // Releasing an already released reader is harmless.
+        }
+      }
     }
   } else if (response.body?.[Symbol.asyncIterator]) {
     const iterator = response.body[Symbol.asyncIterator]();
-    while (true) {
-      const item = await readWithAbort(iterator.next(), signal);
-      if (item.done) break;
-      append(item.value);
+    let completed = false;
+    try {
+      while (true) {
+        const item = await readWithAbort(iterator.next(), signal);
+        if (item.done) break;
+        append(item.value);
+      }
+      completed = true;
+    } finally {
+      if (!completed) {
+        try {
+          const result = iterator.return?.();
+          result?.catch?.(() => {});
+        } catch {
+          // The iterator is already closed.
+        }
+      }
     }
   } else if (typeof response.text === 'function') {
     append(await readWithAbort(response.text(), signal));
@@ -247,6 +297,37 @@ const readResponseText = async (response, maxBytes, signal) => {
     throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono 响应没有可读取内容');
   }
   return Buffer.concat(chunks).toString('utf8');
+};
+
+const discardResponseBody = (response) => {
+  const body = response?.body;
+  if (!body) return;
+  if (typeof body.getReader === 'function') {
+    try {
+      cancelReader(body.getReader());
+    } catch {
+      // The response body may already be consumed.
+    }
+    return;
+  }
+  if (typeof body.cancel === 'function') {
+    try {
+      const result = body.cancel();
+      result?.catch?.(() => {});
+    } catch {
+      // The response body may already be closed.
+    }
+    return;
+  }
+  if (typeof body[Symbol.asyncIterator] === 'function') {
+    try {
+      const iterator = body[Symbol.asyncIterator]();
+      const result = iterator.return?.();
+      result?.catch?.(() => {});
+    } catch {
+      // The response body may already be closed.
+    }
+  }
 };
 
 const readSafeErrorCode = async (response, maxBytes, signal) => {
@@ -282,7 +363,7 @@ export class DahonoRouterProviderAdapter {
     maxEvents = DEFAULT_MAX_EVENTS,
   } = {}) {
     const parsed = new URL(endpoint);
-    if (parsed.protocol !== 'https:' || parsed.hostname !== ALLOWED_ENDPOINT_HOST || parsed.pathname !== '/v1/chat/completions' || parsed.search || parsed.hash) {
+    if (parsed.protocol !== 'https:' || parsed.hostname !== ALLOWED_ENDPOINT_HOST || parsed.pathname !== '/v1/chat/completions' || parsed.search || parsed.hash || parsed.username || parsed.password || parsed.port) {
       throw new Error('DAHONO_ENDPOINT_NOT_ALLOWED');
     }
     if (!providerId) throw new Error('DAHONO_PROVIDER_ID_REQUIRED');
@@ -346,6 +427,7 @@ export class DahonoRouterProviderAdapter {
       const upstreamCode = response.status === 403
         ? await readSafeErrorCode(response, this.maxResponseBytes, controller.signal)
         : undefined;
+      discardResponseBody(response);
       clearTimeout(timer);
       const retryAfterRaw = response.headers?.get('retry-after');
       const retryAfter = retryAfterRaw && /^\d+$/.test(retryAfterRaw.trim()) ? Number(retryAfterRaw) : undefined;
@@ -358,8 +440,9 @@ export class DahonoRouterProviderAdapter {
 
     try {
       const text = await readResponseText(response, this.maxResponseBytes, controller.signal);
-      return parseSseResponse(text, response.headers, this.maxEvents);
+      return parseSseResponse(text, response.headers, this.maxEvents, request.model);
     } catch (error) {
+      discardResponseBody(response);
       if (error instanceof DahonoProviderError) throw error;
       if (error?.name === 'AbortError' || controller.signal.aborted) throw new DahonoProviderError('PROVIDER_TIMEOUT', 'Dahono 响应读取超时', { retryable: true });
       throw new DahonoProviderError('PROVIDER_RESPONSE_INVALID', 'Dahono 响应无法解析');
