@@ -69,6 +69,7 @@ jobs:
           path: |
             work/kai-hour-key-contracts/evidence/ci/
             work/kai-hour-key-contracts/evidence/provider-sandbox/
+            work/kai-hour-key-contracts/evidence/provider-concurrency-quota/
             work/kai-hour-key-contracts/evidence/local-http-sandbox/
             work/kai-hour-key-contracts/evidence/upstream-provider-contract/
             work/kai-hour-key-contracts/evidence/upstream-provider-live/
