@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { runDahonoCapacityAcceptance } from '../src/dahono-capacity-acceptance.mjs';
 
 const START = '2026-10-06T10:00:00+08:00';
 const END = '2026-10-06T11:00:00+08:00';
-const options = { confirmLive: true, windowStart: START, windowEnd: END, now: () => Date.parse(START) + 1000 };
+const bookedSlotHash = createHash('sha256').update('private-slot').digest('hex');
+const options = { confirmLive: true, windowStart: START, windowEnd: END, expectedSlotIdHash: bookedSlotHash, now: () => Date.parse(START) + 1000 };
 
 test('confirmation, explicit one-hour active window and credentials gate all network access', async () => {
   let credentials = 0;
@@ -29,7 +31,7 @@ const headerSet = (overrides = {}) => new Headers({
 });
 const sse = (index, invalidUsage = false) => `data: ${JSON.stringify({ id: `req-${index}`, model: 'deepseek-v4.1-flash', choices: [{ delta: { content: 'PRIVATE OUTPUT' }, finish_reason: 'stop' }], usage: { prompt_tokens: 4, completion_tokens: 1, total_tokens: invalidUsage ? 99 : 5 } })}\n\ndata: [DONE]\n\n`;
 
-function fakeProvider({ fast = false, rpm = 30, invalidUsage = false, abortFirst = false, snapshotOverrides = {}, overflowOverrides = {}, inconsistentAccounting = false, closeBeforeOverflow = false } = {}) {
+function fakeProvider({ fast = false, rpm = 30, invalidUsage = false, abortFirst = false, snapshotOverrides = {}, overflowOverrides = {}, chatOverrides = {}, inconsistentAccounting = false, closeBeforeOverflow = false, wrongSlotAt = Infinity } = {}) {
   let clock = Date.parse(START) + 1000;
   let posts = 0;
   let completed = 0;
@@ -38,6 +40,7 @@ function fakeProvider({ fast = false, rpm = 30, invalidUsage = false, abortFirst
   const held = [];
   const delays = [];
   const fetchImpl = async (url, init) => {
+    clock++;
     assert.equal(init.redirect, 'error');
     assert.equal(init.headers.authorization, 'Bearer TEST-SECRET');
     if (init.method === 'GET') {
@@ -52,7 +55,7 @@ function fakeProvider({ fast = false, rpm = 30, invalidUsage = false, abortFirst
     const index = posts++;
     assert.equal(url, 'https://kai.dahono.com/v1/chat/completions');
     assert.equal(JSON.parse(init.body).max_tokens, 512);
-    if (index === 10) {
+    if (index === 10 && !fast) {
       if (closeBeforeOverflow) { held.splice(0).forEach((finish) => finish()); await new Promise((resolve) => setImmediate(resolve)); }
       else setImmediate(() => held.splice(0).forEach((finish) => finish()));
       return new Response('PRIVATE ERROR', { status: 429, headers: headerSet({
@@ -63,16 +66,18 @@ function fakeProvider({ fast = false, rpm = 30, invalidUsage = false, abortFirst
     if (abortFirst && index === 0) throw Object.assign(new Error('TEST-SECRET'), { name: 'AbortError' });
     const body = new ReadableStream({
       start(controller) {
-        const finish = () => { completed++; controller.enqueue(new TextEncoder().encode(sse(index, invalidUsage))); controller.close(); };
+        const finish = () => { clock++; completed++; controller.enqueue(new TextEncoder().encode(sse(index, invalidUsage))); controller.close(); };
         if (fast || index > 10) finish();
         else held.push(finish);
       },
       cancel() { cancelled++; },
     });
     return new Response(body, { headers: headerSet({
+      'x-dahono-slot-id': index >= wrongSlotAt ? 'another-booking' : 'private-slot',
       'x-dahono-concurrency-active': String(index < 10 ? index + 1 : 1),
       'x-dahono-concurrency-remaining': String(index < 10 ? 9 - index : 9),
       'x-dahono-remaining-rpm': String(Math.max(0, rpm - index - 1)),
+      ...chatOverrides,
     }) });
   };
   return {
@@ -98,13 +103,90 @@ test('observes ten unfinished SSE streams before overflow and verifies independe
   for (const secret of ['TEST-SECRET', 'PRIVATE OUTPUT', 'PRIVATE ERROR', 'private-slot', 'private-region', 'authorization']) assert.equal(evidence.includes(secret), false);
 });
 
-test('fast responses cannot manufacture overlapping provider work or issue an eleventh request', async () => {
+test('fast responses skip overflow while allowing three independently spaced accounting samples', async () => {
   const fake = fakeProvider({ fast: true });
   const result = await runDahonoCapacityAcceptance(fake.config);
   assert.equal(result.status, 'not_proven');
   assert.equal(result.claims.overlapObserved.verdict, 'not_proven');
   assert.equal(result.claims.overload429.verdict, 'not_proven');
-  assert.equal(fake.state().posts, 10);
+  assert.equal(fake.state().posts, 13);
+  assert.equal(result.requests.filter((record) => record.phase === 'overflow').length, 0);
+  assert.equal(result.requests.filter((record) => record.phase === 'sample').length, 3);
+  assert.equal(result.claims.smallSampleAccounting.verdict, 'proven');
+});
+
+test('discovery identity drift does not erase ten valid calls or use unrelated quota as the booking gate', async () => {
+  const fake = fakeProvider({ fast: true, snapshotOverrides: {
+    'x-dahono-slot-id': 'discovery-only-slot',
+    'x-dahono-concurrency-active': '10', 'x-dahono-remaining-rpm': '0',
+  } });
+  const result = await runDahonoCapacityAcceptance(fake.config);
+  assert.equal(result.claims.firstTenSucceeded.verdict, 'proven');
+  assert.equal(result.claims.bookingSlotBinding.verdict, 'proven');
+  assert.equal(result.claims.discoverySlotConsistency.verdict, 'failed');
+  assert.equal(result.claims.smallSampleAccounting.verdict, 'not_proven');
+  assert.equal(result.status, 'not_proven');
+  assert.equal(fake.state().posts, 10); // No usable baseline for paid accounting samples.
+});
+
+test('missing or invalid booked identity blocks before resolving credentials or using the network', async () => {
+  let credentials = 0;
+  let network = 0;
+  for (const expectedSlotIdHash of [undefined, '', 'private-untrusted-slot', 'f'.repeat(63)]) {
+    const result = await runDahonoCapacityAcceptance({ ...options, expectedSlotIdHash,
+      apiKeyResolver: () => { credentials++; return 'secret'; },
+      fetchImpl: () => { network++; throw new Error('unexpected'); },
+    });
+    assert.equal(result.reason, 'BOOKING_IDENTITY_REQUIRED');
+    assert.equal(result.status, 'blocked');
+  }
+  assert.equal(credentials, 0);
+  assert.equal(network, 0);
+});
+
+test('a chat response for another booking cancels remaining work without issuing accounting samples', async () => {
+  const fake = fakeProvider({ wrongSlotAt: 0 });
+  const result = await runDahonoCapacityAcceptance(fake.config);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.claims.bookingSlotBinding.verdict, 'failed');
+  assert.equal(result.requests.some((record) => record.phase === 'sample'), false);
+  assert.ok(fake.state().posts <= 10);
+  assert.equal(JSON.stringify(result).includes('another-booking'), false);
+});
+
+test('a malformed diagnostic counter cannot conceal a wrong booking or allow overflow', async () => {
+  const fake = fakeProvider({ wrongSlotAt: 0, chatOverrides: { 'x-dahono-hourly-tokens-input': 'malformed' } });
+  const result = await runDahonoCapacityAcceptance(fake.config);
+  assert.equal(result.claims.bookingSlotBinding.verdict, 'failed');
+  assert.equal(result.status, 'failed');
+  assert.equal(result.requests.some((record) => record.phase !== 'burst'), false);
+  assert.ok(fake.state().posts <= 10);
+  assert.ok(result.requests.some((record) => record.slotIdHash && record.diagnostics === null));
+  assert.equal(JSON.stringify(result).includes('another-booking'), false);
+});
+
+test('unfinished streams with incomplete booking or diagnostics cannot authorize overflow (virtual timer)', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const chatOverrides of [{ 'x-dahono-slot-id': '' }, { 'x-dahono-hourly-tokens-input': 'malformed' }]) {
+    const fake = fakeProvider({ chatOverrides });
+    const pending = runDahonoCapacityAcceptance(fake.config);
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    t.mock.timers.tick(30_001);
+    const result = await pending;
+    assert.equal(result.requests.some((record) => record.phase !== 'burst'), false);
+    assert.equal(fake.state().posts, 10);
+  }
+});
+
+test('a later sample changing booking does not erase burst success or allow more samples', async () => {
+  const fake = fakeProvider({ wrongSlotAt: 11 });
+  const result = await runDahonoCapacityAcceptance(fake.config);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.claims.firstTenSucceeded.verdict, 'proven');
+  assert.equal(result.claims.bookingSlotBinding.verdict, 'failed');
+  assert.equal(result.requests.filter((record) => record.phase === 'sample').length, 1);
+  assert.equal(fake.state().posts, 12);
 });
 
 test('429 with exhausted RPM proves overload only, not the concurrency-specific limit', async () => {
@@ -215,6 +297,7 @@ test('the five-minute wall deadline aborts a stuck sample pause without issuing 
   const result = await pending;
   assert.equal(result.status, 'failed');
   assert.equal(result.reason, 'RUN_ABORTED_OR_DEADLINE');
+  assert.equal(result.claims.firstTenSucceeded.verdict, 'proven');
   assert.equal(result.scope.postRequestsIssued, 11);
   assert.equal(result.scope.getRequestsIssued, 1);
 });

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DahonoRouterProviderAdapter, DAHONO_ROUTER_MODEL } from './adapters/dahono-router-provider.mjs';
+import { assessDahonoCapacityEvidence } from './dahono-capacity-assessment.mjs';
 
 const MODELS_ENDPOINT = 'https://kai.dahono.com/v1/models';
 const MAX_POSTS = 14;
@@ -12,7 +13,6 @@ const NUMERIC_HEADERS = {
   hourlyTokensInput: 'x-dahono-hourly-tokens-input', hourlyTokensOutput: 'x-dahono-hourly-tokens-output',
 };
 const hash = (value) => createHash('sha256').update(value).digest('hex');
-const claim = (verdict = 'not_proven', reason = 'NOT_RUN') => ({ verdict, reason });
 const abortError = () => Object.assign(new Error('aborted'), { name: 'AbortError' });
 const guarded = (operation, signal) => {
   if (signal.aborted) return Promise.reject(abortError());
@@ -22,11 +22,15 @@ const guarded = (operation, signal) => {
     Promise.resolve(operation).then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
   });
 };
-const diagnostics = (headers) => {
+const bookingIdentity = (headers) => {
   const slot = headers?.get('x-dahono-slot-id');
+  return slot && slot.length <= 1024 ? hash(slot) : null;
+};
+const diagnostics = (headers) => {
+  const slotIdHash = bookingIdentity(headers);
   const region = headers?.get('x-dahono-server-region');
-  if (!slot || !region || slot.length > 1024 || region.length > 1024) return null;
-  const result = { slotIdHash: hash(slot), serverRegionHash: hash(region) };
+  if (!slotIdHash || !region || region.length > 1024) return null;
+  const result = { slotIdHash, serverRegionHash: hash(region) };
   for (const [name, header] of Object.entries(NUMERIC_HEADERS)) {
     const raw = headers.get(header);
     if (!raw || !/^\d+$/.test(raw.trim()) || !Number.isSafeInteger(Number(raw))) return null;
@@ -49,17 +53,19 @@ const cancel = (body) => { try { body?.cancel?.()?.catch?.(() => {}); } catch { 
 
 /** Bounded live acceptance. Clock, pause and HTTP are injected only for independent boundary tests. */
 export async function runDahonoCapacityAcceptance({
-  confirmLive = false, windowStart, windowEnd, apiKeyResolver, fetchImpl = globalThis.fetch,
+  confirmLive = false, windowStart, windowEnd, expectedSlotIdHash, apiKeyResolver, fetchImpl = globalThis.fetch,
   now = () => Date.now(), pause = (ms, signal) => delay(ms, undefined, { signal }),
 } = {}) {
   const evidence = {
-    schemaVersion: 'kai-dahono-capacity-evidence.v1', status: 'blocked', reason: 'LIVE_CONFIRMATION_REQUIRED',
+    schemaVersion: 'kai-dahono-capacity-evidence.v2', status: 'blocked', reason: 'LIVE_CONFIRMATION_REQUIRED',
     scope: { networkAttempted: false, networkUsed: false, credentialsUsed: false, credentialResolved: false, postRequestsIssued: 0, getRequestsIssued: 0, maxPostRequests: MAX_POSTS, maxDurationMs: MAX_DURATION_MS, fullHourlyQuotaProven: false },
-    claims: { firstTenSucceeded: claim(), overlapObserved: claim(), overload429: claim(), concurrencySpecific429: claim(), smallSampleAccounting: claim() },
+    claims: assessDahonoCapacityEvidence({ requests: [], snapshots: [] }).claims,
     requests: [], snapshots: [], overlap: { unfinishedAtOverflow: 0 },
   };
   if (confirmLive !== true) return evidence;
   if (!validWindow(windowStart, windowEnd, now())) { evidence.reason = 'WINDOW_INVALID_OR_TOO_SHORT'; return evidence; }
+  if (typeof expectedSlotIdHash !== 'string' || !/^[a-f0-9]{64}$/.test(expectedSlotIdHash)) { evidence.reason = 'BOOKING_IDENTITY_REQUIRED'; return evidence; }
+  evidence.expectedSlotIdHash = expectedSlotIdHash;
   const started = now();
   let key;
   try { key = await guarded(Promise.resolve().then(() => apiKeyResolver?.()), AbortSignal.timeout(10_000)); } catch { evidence.reason = 'CREDENTIAL_UNAVAILABLE'; return evidence; }
@@ -111,8 +117,8 @@ export async function runDahonoCapacityAcceptance({
     evidence.snapshots.push(result);
     return result;
   };
-  const issue = (index) => {
-    const record = { index, status: 'pending', headersAt: null, completedAt: null, cancelledAt: null, httpStatus: null, diagnostics: null };
+  const issue = (index, phase) => {
+    const record = { index, phase, issuedAt: now(), status: 'pending', headersAt: null, completedAt: null, cancelledAt: null, httpStatus: null, diagnostics: null };
     records.push(record);
     let headersResolve;
     record.headersReady = new Promise((resolve) => { headersResolve = resolve; });
@@ -127,8 +133,10 @@ export async function runDahonoCapacityAcceptance({
         if (index === 10) evidence.overlap.unfinishedAtOverflowHeaders = records.slice(0, 10).filter((item) => item.completedAt === null && item.cancelledAt === null && item.status === 'pending').length;
         record.httpStatus = response.status;
         record.headersAt = now();
+        record.slotIdHash = bookingIdentity(response.headers);
         record.diagnostics = diagnostics(response.headers);
         record.sse = /(?:^|;)\s*text\/event-stream(?:;|$)/i.test(response.headers.get('content-type') ?? '');
+        if (record.slotIdHash && record.slotIdHash !== expectedSlotIdHash) whole.abort();
         const retry = response.headers.get('retry-after');
         if (retry && /^\d+$/.test(retry) && Number.isSafeInteger(Number(retry))) record.retryAfterSeconds = Number(retry);
         if (!response.body?.getReader) { headersResolve(); return response; }
@@ -141,6 +149,7 @@ export async function runDahonoCapacityAcceptance({
         };
         activeBodies.add(cleanup);
         signal.addEventListener('abort', cleanup, { once: true });
+        if (signal.aborted) cleanup();
         headersResolve();
         return {
           status: response.status, ok: response.ok, headers: response.headers,
@@ -171,67 +180,43 @@ export async function runDahonoCapacityAcceptance({
       record.errorCode = SAFE_ERRORS.has(error?.code) ? error.code : 'PROVIDER_ERROR';
       if (index < 10) whole.abort();
     }).finally(() => headersResolve());
+    record.done = promise;
     pending.push(promise);
     return record;
   };
   try {
     const before = await snapshot();
-    if (before.concurrencyActive !== 0 || before.concurrencyRemaining < 10 || before.remainingRpm < 10 || before.hourlyReqRemaining < MAX_POSTS) {
+    if (before.slotIdHash === expectedSlotIdHash && (before.concurrencyActive !== 0 || before.concurrencyRemaining < 10 || before.remainingRpm < 10 || before.hourlyReqRemaining < MAX_POSTS)) {
       evidence.reason = 'SLOT_NOT_IDLE_OR_QUOTA_INSUFFICIENT';
       return evidence;
     }
     evidence.status = 'not_proven';
-    const first = Array.from({ length: 10 }, (_, index) => issue(index));
+    const first = Array.from({ length: 10 }, (_, index) => issue(index, 'burst'));
     await Promise.all(first.map((record) => record.headersReady));
     // Let already buffered responses finish naturally; never pause body consumption to fake concurrency.
     await new Promise((resolve) => setImmediate(resolve));
     const unfinished = first.filter((record) => record.httpStatus === 200 && record.sse && record.completedAt === null && record.cancelledAt === null && record.status === 'pending');
     evidence.overlap.unfinishedAtOverflow = unfinished.length;
-    if (unfinished.length === 10 && !whole.signal.aborted) {
-      evidence.claims.overlapObserved = claim('proven', 'TEN_UNFINISHED_SSE_STREAMS');
-      const overflow = issue(10);
-      await pending[10];
-      const sameSlot = records.every((record) => record.diagnostics?.slotIdHash === before.slotIdHash);
-      evidence.claims.overload429 = claim(overflow.httpStatus === 429 ? 'proven' : 'failed', overflow.httpStatus === 429 ? 'HTTP_429_OBSERVED' : 'EXPECTED_429_NOT_OBSERVED');
-      const concurrentLimitObserved = overflow.httpStatus === 429
-        && evidence.overlap.unfinishedAtOverflowHeaders === 10 && sameSlot
-        && overflow.diagnostics?.concurrencyActive === 10
-        && overflow.diagnostics?.concurrencyRemaining === 0;
-      evidence.overlap.providerAtLimitOn429 = concurrentLimitObserved;
-      // Diagnostic counters describe occupancy, not the cause of rejection. A
-      // verified upstream reason contract can strengthen this run's verdict later.
-      evidence.claims.concurrencySpecific429 = claim('not_proven',
-        overflow.diagnostics?.remainingRpm === 0 ? 'RPM_LIMIT_CONFOUNDED'
-          : overflow.diagnostics?.concurrencyRemaining > 0 ? 'CONCURRENCY_CAPACITY_REMAINS'
-            : concurrentLimitObserved && overflow.diagnostics?.remainingRpm > 0 ? 'RATE_LIMIT_CAUSE_UNCONFIRMED'
-              : 'DIAGNOSTICS_INSUFFICIENT');
-    } else {
-      evidence.claims.overlapObserved = claim('not_proven', 'TEN_STREAM_OVERLAP_NOT_OBSERVED');
+    if (unfinished.length === 10 && unfinished.every((record) => record.slotIdHash === expectedSlotIdHash && record.diagnostics) && !whole.signal.aborted) {
+      const overflow = issue(10, 'overflow');
+      await overflow.done;
     }
     await Promise.all(pending);
-    const tenSucceeded = first.every((record) => record.status === 'succeeded' && record.diagnostics?.slotIdHash === before.slotIdHash);
-    evidence.claims.firstTenSucceeded = claim(tenSucceeded ? 'proven' : 'failed', tenSucceeded ? 'TEN_VALID_RESPONSES' : 'RESPONSE_OR_SLOT_INVALID');
-    if (tenSucceeded && evidence.scope.postRequestsIssued === 11 && !whole.signal.aborted) {
+    const burstAssessment = assessDahonoCapacityEvidence({ ...evidence, requests: records }, { expectedSlotIdHash });
+    // Accounting needs a baseline for this booking, not an overflow rejection.
+    if (burstAssessment.claims.firstTenSucceeded.verdict === 'proven'
+      && burstAssessment.claims.bookingSlotBinding.verdict === 'proven'
+      && before.slotIdHash === expectedSlotIdHash && !whole.signal.aborted) {
       for (let index = 11; index < MAX_POSTS; index++) {
         ensureActive();
         await guarded(pause(65_000, whole.signal), whole.signal);
         ensureActive();
-        issue(index);
-        await pending[index];
-        if (records[index].status !== 'succeeded') break;
+        const sample = issue(index, 'sample');
+        await sample.done;
+        if (sample.status !== 'succeeded' || whole.signal.aborted) break;
       }
-      const after = await snapshot();
-      const successful = records.filter((record) => record.status === 'succeeded');
-      const usage = successful.reduce((total, record) => ({ inputUnits: total.inputUnits + record.usage.inputUnits, outputUnits: total.outputUnits + record.usage.outputUnits, totalUnits: total.totalUnits + record.usage.totalUnits }), { inputUnits: 0, outputUnits: 0, totalUnits: 0 });
-      const usageSafe = Object.values(usage).every(Number.isSafeInteger);
-      const observed = { requests: before.hourlyReqRemaining - after.hourlyReqRemaining, inputUnits: after.hourlyTokensInput - before.hourlyTokensInput, outputUnits: after.hourlyTokensOutput - before.hourlyTokensOutput };
-      evidence.accounting = { successfulRequests: successful.length, usage: usageSafe ? usage : null, observed, expectedRequestCounter: 'successful-requests', sampleIntervalsMs: 65_000 };
-      const comparable = usageSafe && successful.length === 13 && after.concurrencyActive === 0 && after.slotIdHash === before.slotIdHash && records.every((record) => record.diagnostics?.slotIdHash === before.slotIdHash);
-      const exact = comparable && observed.requests === 13 && observed.inputUnits === usage.inputUnits && observed.outputUnits === usage.outputUnits;
-      evidence.claims.smallSampleAccounting = claim(exact ? 'proven' : 'not_proven', exact ? 'INDEPENDENT_COUNTERS_MATCH' : comparable ? 'COUNTER_UNIT_OR_SETTLEMENT_MISMATCH' : 'SAMPLE_OR_SLOT_INCOMPLETE');
+      await snapshot();
     }
-    evidence.status = Object.values(evidence.claims).some((value) => value.verdict === 'failed') ? 'failed'
-      : Object.values(evidence.claims).every((value) => value.verdict === 'proven') ? 'passed' : 'not_proven';
     evidence.reason = 'LIMITED_CLAIMS_ONLY';
   } catch {
     evidence.status = evidence.scope.postRequestsIssued ? 'failed' : 'blocked';
@@ -242,7 +227,12 @@ export async function runDahonoCapacityAcceptance({
     await Promise.all(pending);
     clearTimeout(timer);
     evidence.finishedAt = new Date(now()).toISOString();
-    evidence.requests = records.map(({ index, status, headersAt, completedAt, cancelledAt, httpStatus, diagnostics: safe, retryAfterSeconds, usage, errorCode }) => ({ index, status, headersAt, completedAt, cancelledAt, httpStatus, diagnostics: safe, ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}), ...(usage ? { usage } : {}), ...(errorCode ? { errorCode } : {}) }));
+    evidence.requests = records.map(({ index, phase, issuedAt, sse, slotIdHash, status, headersAt, completedAt, cancelledAt, httpStatus, diagnostics: safe, retryAfterSeconds, usage, errorCode }) => ({ index, phase, issuedAt, sse: sse === true, slotIdHash: slotIdHash ?? null, status, headersAt, completedAt, cancelledAt, httpStatus, diagnostics: safe, ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}), ...(usage ? { usage } : {}), ...(errorCode ? { errorCode } : {}) }));
+    const assessment = assessDahonoCapacityEvidence(evidence, { expectedSlotIdHash });
+    evidence.claims = assessment.claims;
+    evidence.observations = assessment.observations;
+    if (assessment.accounting) evidence.accounting = assessment.accounting;
+    if (evidence.status !== 'blocked' && evidence.status !== 'failed') evidence.status = assessment.status;
   }
   return evidence;
 }

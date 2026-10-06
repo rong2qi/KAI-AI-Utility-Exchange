@@ -17,10 +17,14 @@ if (args.some((arg) => arg !== '--confirm-live') || args.length > 1) {
   result = offlineFailure('UNKNOWN_ARGUMENT');
 } else {
   try {
+    const bookingSlotId = process.env.DAHONO_BOOKING_SLOT_ID;
+    const expectedSlotIdHash = typeof bookingSlotId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(bookingSlotId)
+      ? createHash('sha256').update(bookingSlotId).digest('hex') : undefined;
     result = await runDahonoCapacityAcceptance({
       confirmLive: args.includes('--confirm-live'),
       windowStart: process.env.DAHONO_WINDOW_START,
       windowEnd: process.env.DAHONO_WINDOW_END,
+      expectedSlotIdHash,
       apiKeyResolver: () => process.env.DAHONO_API_KEY,
     });
   } catch {
@@ -30,6 +34,7 @@ if (args.some((arg) => arg !== '--confirm-live') || args.length > 1) {
 }
 const files = [
   'src/dahono-capacity-acceptance.mjs',
+  'src/dahono-capacity-assessment.mjs',
   'src/adapters/dahono-router-provider.mjs',
   'scripts/dahono-capacity-verify.mjs',
   'package-lock.json',
@@ -44,7 +49,7 @@ const runId = /^\d+$/.test(process.env.GITHUB_RUN_ID ?? '') && /^\d+$/.test(proc
   : `local-${randomUUID()}`;
 const evidence = {
   ...result,
-  schemaVersion: 'kai-dahono-capacity-run.v1',
+  schemaVersion: 'kai-dahono-capacity-run.v2',
   runId,
   recordedAt: new Date().toISOString(),
   source: {

@@ -11,6 +11,10 @@ on:
         description: 'Exclusive booking end, exactly 1 hour after start'
         required: true
         type: string
+      booking_slot_id:
+        description: 'Slot ID from the confirmed booking receipt (not an API key)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -46,6 +50,7 @@ jobs:
           DAHONO_API_KEY: ${{ secrets.DAHONO_API_KEY }}
           DAHONO_WINDOW_START: ${{ inputs.window_start }}
           DAHONO_WINDOW_END: ${{ inputs.window_end }}
+          DAHONO_BOOKING_SLOT_ID: ${{ inputs.booking_slot_id }}
         run: npm run dahono:capacity:verify -- --confirm-live
       - name: Preserve redacted evidence even when a claim is not proven
         if: always()

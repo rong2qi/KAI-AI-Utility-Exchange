@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "kai-dahono-capacity-offline-replay.v1",
+  "recordedAt": "2026-10-06T09:39:46.211Z",
+  "kind": "offline_reassessment_of_existing_live_evidence",
+  "scope": {
+    "networkAttempted": false,
+    "credentialsUsed": false,
+    "newProviderRequests": 0,
+    "originalEvidenceModified": false,
+    "fullHourlyQuotaProven": false,
+    "productionSafetyProven": false
+  },
+  "original": {
+    "file": "evidence/dahono-capacity/github-37440028834-1-live.json",
+    "sha256": "7b73255e52438d6d900496cc38954629e865ed8747529661c2eedd3a2ef20379",
+    "githubRunId": 37440028834,
+    "githubRunAttempt": 1,
+    "status": "failed",
+    "postRequestsIssued": 10,
+    "getRequestsIssued": 1,
+    "sourceCommit": "2027450c7fd364276599e775f762e256e1f155d1"
+  },
+  "booking": {
+    "source": "evidence/dahono-provider/booking-20261006-1700.json",
+    "expectedSlotIdHash": "127e1d6485ede53cf1ef15afebea5de395113b3c67deb1a0170c73048712c659",
+    "window": {
+      "start": "2026-10-06T17:00:00+08:00",
+      "endExclusive": "2026-10-06T18:00:00+08:00",
+      "timeZone": "Asia/Shanghai"
+    }
+  },
+  "assessor": {
+    "file": "src/dahono-capacity-assessment.mjs",
+    "sha256": "af042ee4b2664e410f33697a83f3dd4ed1eff5c8974bdb2ca98caa6db44d389f"
+  },
+  "assessment": {
+    "schemaVersion": "kai-dahono-capacity-assessment.v1",
+    "status": "not_proven",
+    "claims": {
+      "firstTenSucceeded": {
+        "verdict": "proven",
+        "reason": "TEN_VALID_RESPONSES"
+      },
+      "bookingSlotBinding": {
+        "verdict": "proven",
+        "reason": "CHAT_MATCHES_CONFIRMED_BOOKING"
+      },
+      "discoverySlotConsistency": {
+        "verdict": "failed",
+        "reason": "DISCOVERY_CHAT_SLOT_MISMATCH"
+      },
+      "overlapObserved": {
+        "verdict": "not_proven",
+        "reason": "TEN_STREAM_OVERLAP_NOT_OBSERVED"
+      },
+      "overload429": {
+        "verdict": "not_proven",
+        "reason": "NOT_RUN"
+      },
+      "concurrencySpecific429": {
+        "verdict": "not_proven",
+        "reason": "NOT_RUN"
+      },
+      "smallSampleAccounting": {
+        "verdict": "not_proven",
+        "reason": "NOT_RUN"
+      }
+    },
+    "observations": {
+      "requestCount": 10,
+      "successfulRequests": 10,
+      "firstTenSuccessfulRequests": 10,
+      "peakObservedConcurrentStreams": 7,
+      "overflowRequests": 0,
+      "sampleRequests": 0,
+      "bookingMismatches": 0,
+      "slotIdentityConflicts": 0,
+      "uniqueChatSlotCount": 1,
+      "discoverySnapshots": 1,
+      "unfinishedAtOverflowHeaders": 0
+    }
+  }
+}

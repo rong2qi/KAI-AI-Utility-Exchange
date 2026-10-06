@@ -14,7 +14,7 @@
 8. 执行 `staging:runtime:verify`，验证本地 loopback 服务能回读当前版本与摘要，并验证当前/上一制品槽位回滚；
 9. 上传 JSON 证据、Provider Sandbox 证据、本地 HTTP Sandbox 证据、staging rehearsal、staging gate、staging target 证据和原始测试日志。
 
-Dahono 模型池有两个独立的受保护入口：单次 `dahono:live:smoke` 和有界容量验收 `dahono:capacity:verify`。CI 验证二者在没有显式确认时不读取密钥、不出网并返回 `blocked`；实际执行使用对应手动工作流，由 `staging` 环境审批后注入 `DAHONO_API_KEY`。二者共享 `kai-dahono-live` 并发组，避免同仓库测试互相占用额度；外部调用仍需由操作者隔离。容量工作流要求已预约的精确起止时间，最多 14 次推理、2 次遥测读取、5 分钟、零自动重试。门禁或模拟测试通过不等于真实推理或容量通过。
+Dahono 模型池有两个独立的受保护入口：单次 `dahono:live:smoke` 和有界容量验收 `dahono:capacity:verify`。CI 验证二者在没有显式确认时不读取密钥、不出网并返回 `blocked`；实际执行使用对应手动工作流，由 `staging` 环境审批后注入 `DAHONO_API_KEY`。二者共享 `kai-dahono-live` 并发组，避免同仓库测试互相占用额度；外部调用仍需由操作者隔离。容量工作流要求已预约的精确起止时间与回执 slot ID，证据只保存身份哈希；最多 14 次推理、2 次遥测读取、5 分钟、零自动重试。门禁或模拟测试通过不等于真实推理或容量通过。
 
 npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.json。JSON 包含运行时间、Node/npm 版本、测试退出码、Git 修订（若当前目录属于 Git 仓库）以及排除生成目录后的源码 SHA-256 指纹。原始日志用于复核输出，JSON 用于机器读取。失败运行也会上传证据，避免只保留绿色结果。
 
@@ -39,6 +39,10 @@ CI 的通过结论限定为：
 对应远端 [contract CI run 37410477935](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37410477935) 已成功，源码为 `a8fac380166b078613c242b8da69e2aafa4f17af`，Node `22.23.3`。质量门、测试和三项 live 门禁检查均成功；artifact `kai-hour-key-ci-evidence-37410477935-1`（ID `11388839326`）的 SHA-256 为 `17d7e21890213798420bc7846f4c3081b662549b5db45c46e7a529c7e11fa211`。已下载至 `work/kai-hour-key-contracts/evidence/ci/github-37410477935-artifact/`，回读测试状态与容量 guard 的未出网/未用凭据字段相符。因本切片没有更改服务器运行制品，自动触发且等待审批的重复部署 run `37410477934` 已取消；此前成功部署不受影响。
 
 17 点受保护真实容量验收 [run 37440028834](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37440028834) 已执行一次，源码 `2027450c7fd364276599e775f762e256e1f155d1` 的运行代码与上述已审核版本一致。离线检查通过，live 步骤结论 `failure`：十次请求本身均成功且匹配预约，但 `/models` 与 chat 的 slot 身份不一致，客户端十路重叠未观察到，故未发第十一路和后续样本。不能将 CI 成功替代这些尚未证明的容量边界。原始 live JSON SHA-256 为 `7b73255e52438d6d900496cc38954629e865ed8747529661c2eedd3a2ef20379`；artifact ID `11400224330`，摘要 `6d52b655683a3049186455f55c2ccbc5456035e0193666eb1a047ff26e69f629`，完整下载保存在 `work/kai-hour-key-contracts/evidence/dahono-capacity/artifacts-37440028834-1/`。执行文件指纹已独立重算匹配；原始证据同时报告 `workingTreeDirty=true`，因此不宣称 runner 整体工作树干净。具体结果和派生解释由 `work/kai-hour-key-contracts/evidence/dahono-capacity/LATEST-LIVE.json` 指向，原始失败记录不改写。
+
+2026-10-06 离线判断拆分切片：实时采集与历史回放共用纯评估器，分别判断调用成功、预约绑定和发现接口一致性；小样本计数不再依赖先发过载请求。新增预约身份输入，错预约独立于数值诊断头触发取消，过载入场要求已知正确身份和有效诊断。独立回读复现并修复“不可能时间轴证明重叠”“坏统计头掩盖错预约”两项关联问题，再验证 38/38 定向测试通过，未发现遗留阻断。本机完整质量门 170/170 测试通过，行/分支/函数覆盖率 94.05% / 81.76% / 94.49%，lint、声明类型检查通过，依赖审计 0 漏洞；原始日志保存为 `work/kai-hour-key-contracts/evidence/dahono-capacity/local-quality-split-20261006.log`。
+
+本片回放记录为 `work/kai-hour-key-contracts/evidence/dahono-capacity/replay-37440028834-split-v1.json`：使用上述未改写 live 原件及本地预约回执哈希，十次调用成功与预约绑定分别为 `proven`，发现接口身份一致性为 `failed`，整体为 `not_proven`；观察到的流重叠峰值仍为 7。记录绑定评估器 SHA-256，新增 Provider 请求为 0，不改写 `LATEST-LIVE.json` 或原始失败记录。该判断拆分不会追认真实十路重叠、第十一路 429、整小时额度或生产安全通过。源码固定点与远端 CI 回执在对应运行完成后追加；用户验收状态仍待用户确认。
 
 ## CD 的建议门禁
 
