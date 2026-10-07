@@ -74,6 +74,12 @@ CI 的通过结论限定为：
 
 本片证明范围为同进程共享内存 Store 和内存 snapshot 重建协议。没有落盘数据库或跨进程事务/fencing；owner token + expected-state 是当前状态保护，不是分布式租约。未知上游结果仍需受保护的对账/恢复流程；过期后新的 Compute 仍被拒绝，独立跨窗恢复入口待后续实现。Provider 原生幂等、真实 staging 回滚和生产安全继续单独取证。技术验证通过不自动写为用户 `ACCEPTED`。
 
+最终独立回读另复跑六组关键测试 49/49 通过。回读还移除了生产 `ReservationStorePort` 对同步 `snapshot()` 的要求，增加只有四个异步方法的类型验收；内存 snapshot 保留为具体 adapter 的私有能力。Receipt Writer 现在比较完整规范化候选，13 类冲突均拒绝且不覆盖原回执。上述修订已包含在最终本地 238 项测试中。
+
+对应远端 [contract CI run 37579261793](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37579261793) 已成功，固定源码 `e6bfd37701b30c16e8e4ec2d8dc7121e05b4792b`，Node `22.23.3`。质量门、严格存储实现类型检查、238/238 测试、原八项入口验收及新增两路并发预占验收全部通过；行/分支/函数覆盖率为 97.63% / 88.68% / 94.57%，依赖审计 0 漏洞。本地 Node 24 与远端 Node 22 分别记证，不称为远端双版本矩阵。三个 live guard 均为 blocked；本 run 的 Dahono capacity guard 记录四项出网/凭据标志均 false，POST/GET 为 0。
+
+已下载并回读 artifact `kai-hour-key-ci-evidence-37579261793-1`（ID `11463891261`）。原始 ZIP 保存在 `work/kai-hour-key-contracts/evidence/ci/github-37579261793-artifact.zip`，解包目录为同名无 `.zip` 路径；实算 SHA-256 `1b3673d36208633cad33a105bd0eb590b7bc16545e5c70e2c80b203cd8cf88b3` 与 GitHub 摘要一致。已读取 `ci/quality.log`、该 run 测试 JSON/原始日志、Exchange JSON 和三份 guard；103 个 Git 跟踪包文件重算指纹 `7c72c93f429cadb9958cd32e2f553fa373a367bb1f81e0df31f38063cfbfbc73` 与 CI 相符，Exchange 32 份执行相关文件的逐文件摘要及总指纹亦匹配。预占证据为 `total=2, reserved=2, committed=0` 到 `reserved=0, committed=2`，外部 Provider 调用为 0。Runner 因生成证据报告 workingTreeDirty=true，不称其整棵工作区干净；artifact 中的历史 live 原件不是本次新增调用。此源码仅触发合同 CI，无新增部署或付费运行。
+
 ## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：
