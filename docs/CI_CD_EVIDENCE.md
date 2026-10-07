@@ -16,6 +16,8 @@
 
 Dahono 模型池有两个独立的受保护入口：单次 `dahono:live:smoke` 和有界容量验收 `dahono:capacity:verify`。CI 验证二者在没有显式确认时不读取密钥、不出网并返回 `blocked`；实际执行使用对应手动工作流，由 `staging` 环境审批后注入 `DAHONO_API_KEY`。二者共享 `kai-dahono-live` 并发组，避免同仓库测试互相占用额度；外部调用仍需由操作者隔离。容量工作流要求已预约的精确起止时间与回执 slot ID，证据只保存身份哈希；最多 14 次推理、2 次遥测读取、5 分钟、零自动重试。门禁或模拟测试通过不等于真实推理或容量通过。
 
+2026-10-07 用户调整了后续顺序：先完成 Exchange 产品封装与不消耗供应商推理额度的验证，再从 Exchange 入口安排真实验收，详见[当前测试计划](DAHONO_MODEL_POOL_INTEGRATION_TEST.md#当前执行顺序先完成-exchange-封装再使用真实额度验收)。已有直连工作流及成功/失败证据保留；本次计划调整不启动 live、不预约、不自动扩大额度，也不把既有 CI 结果升级为产品完整验收。
+
 npm run ci:verify 生成 evidence/ci/<run-id>.json、对应的 .log 和 LATEST.json。JSON 包含运行时间、Node/npm 版本、测试退出码、Git 修订（若当前目录属于 Git 仓库）以及排除生成目录后的源码 SHA-256 指纹。原始日志用于复核输出，JSON 用于机器读取。失败运行也会上传证据，避免只保留绿色结果。
 
 ## 证据判断
