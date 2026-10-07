@@ -56,6 +56,10 @@ CI 的通过结论限定为：
 
 一键 Exchange 验收 `node scripts/exchange-sandbox-verify.mjs` 通过八项：错密钥、越权、输出+回执、幂等重放、内容冲突、耗尽、小时到期、到期后私有回执读取。只发生一次本地 Provider 执行，扣一个单位，生成一份回执；外部 Provider 调用为 0。证据仅保存白名单结果/计数、源码摘要、Node/Git 与工作区状态，不保存账户 Key、供应商密钥、模型输入输出或原始异常。真实 loopback HTTP 不写成完全禁网；CI 的新增独立步骤上传该证据目录。
 
+对应远端 [contract CI run 37563812050](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37563812050) 已通过，固定源码 `89ff521c5a79032b79fc90b43543b20692e9d793`，Node `22.23.3`，209/209 测试；行/分支/函数覆盖率 97.24% / 87.81% / 94.23%。新增 Exchange 八项验收全部通过，计数为 Provider 调用/执行各 1、余额 0、回执 1，均为本地合成场景。三项 live 门禁仍为 blocked；Dahono capacity evidence 中 networkAttempted/networkUsed/credentialsUsed/credentialResolved 均为 false，POST/GET 均为 0。
+
+已下载并回读 artifact `kai-hour-key-ci-evidence-37563812050-1`（ID `11458575561`），ZIP 位于 `work/kai-hour-key-contracts/evidence/ci/github-37563812050-artifact.zip`，解包目录为同名无 `.zip` 路径。实算 SHA-256 `da1559d1a557373acf1d9c295117b8dda14c5f84f1ac964c198767652e12a285` 与 GitHub 摘要相符。回读了 `ci/quality.log`、该 run 的测试 JSON/原始日志、Exchange JSON 及三份 guard；96 个 Git 跟踪包文件重算指纹 `198ae3e1cbae05711b97c6c8116243487707d673d92b8a3d1fd946e7ffbd77e6` 与 CI 相符，Exchange 证据中的逐源文件摘要亦相符。本机完整目录另有未跟踪 `.DS_Store`，因此本机目录指纹与远端跟踪源码指纹分开记录；没有为匹配而改写原始证据。Runner 的 workingTreeDirty=true 来自生成证据，不称其整棵工作区干净。此次仅触发合同 CI，没有新增 staging 部署或真实供应商运行。
+
 本片技术验证不自动记为用户 `ACCEPTED`。仅覆盖同进程、内存 sandbox、非流式结果与窗内幂等恢复；跨进程业务事务、同 Holding 并发、跨窗只结算恢复、真实 Provider、生产安全和真实 staging 回滚继续分别取证。当前部署制品未新增业务模块，没有本次部署动作。
 
 ## CD 的建议门禁
