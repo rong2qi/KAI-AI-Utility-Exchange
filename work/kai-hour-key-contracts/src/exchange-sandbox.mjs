@@ -2,7 +2,8 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { HourKeyRuntime } from './runtime.mjs';
 import { HourKeyPackagingAdapter } from './adapters/hour-key-packaging.mjs';
 import { SandboxProviderAdapter } from './adapters/sandbox-provider.mjs';
-import { UsageExecutionLedger } from './usage-ledger.mjs';
+import { ReservationUsageLedger } from './reservation-usage-ledger.mjs';
+import { MemoryReservationStore } from './reservation-store.mjs';
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -64,8 +65,8 @@ export function createExchangeSandbox({ opaqueKey, now = () => new Date().toISOS
     issuedAt: iso(0), expiresAt: slot.slotEnd, receiptUntil: iso(HOUR_MS + DAY_MS),
     allowProviderSwitch: false,
   };
-  let holding = { holdingId, accountId, grantId, offerId, resourceScope, slot, unitsRemaining: units, status: 'held' };
-  const consumptions = new Map();
+  const holding = { holdingId, accountId, grantId, offerId, resourceScope, slot, unitsRemaining: units, status: 'held' };
+  const reservationStore = new MemoryReservationStore({ holdings: [holding] });
   const receipts = new Map();
   const receiptIds = new Map();
   const providerAdapter = new SandboxProviderAdapter({ providerId: provider, supportedModels: [model], supportedRegions: [region] });
@@ -82,25 +83,10 @@ export function createExchangeSandbox({ opaqueKey, now = () => new Date().toISOS
     offerCatalog: { async query() { return []; }, async get() { return undefined; } },
     hourKeyPackager: new HourKeyPackagingAdapter(),
     holdingPort: {
-      async get(requestAccount, requestHolding) {
-        return requestAccount === accountId && requestHolding === holdingId ? clone(holding) : undefined;
-      },
+      get: (requestAccount, requestHolding) => reservationStore.getHolding(requestAccount, requestHolding),
       async lock() { throw new Error('SANDBOX_HOLDING_PREAUTHORIZED'); },
-      async consume(command) {
-        if (command.accountId !== accountId || command.holdingId !== holdingId) throw new Error('HOLDING_REQUIRED');
-        if (!Number.isSafeInteger(command.units) || command.units < 1 || !command.idempotencyKey) throw new Error('EXECUTION_COMMAND_INVALID');
-        const identity = scopedKey(command.accountId, command.idempotencyKey);
-        const existing = consumptions.get(identity);
-        if (existing) {
-          if (existing.units !== command.units) throw new Error('IDEMPOTENCY_CONFLICT');
-          return clone(existing.holding);
-        }
-        if (holding.unitsRemaining < command.units) throw new Error('HOLDING_EXHAUSTED');
-        holding = { ...holding, unitsRemaining: holding.unitsRemaining - command.units };
-        holding.status = holding.unitsRemaining === 0 ? 'exhausted' : 'active';
-        consumptions.set(identity, { units: command.units, holding: clone(holding) });
-        return clone(holding);
-      },
+      // Reservation settlement is authoritative; direct consumption cannot bypass it.
+      async consume() { throw new Error('RESERVATION_REQUIRED'); },
     },
     providerAdapters: new Map([[provider, providerAdapter]]),
     receiptWriter: {
@@ -109,7 +95,7 @@ export function createExchangeSandbox({ opaqueKey, now = () => new Date().toISOS
         const identity = scopedKey(receipt.accountId, receipt.idempotencyKey);
         const existing = receipts.get(identity);
         if (existing) {
-          if (existing.requestHash !== receipt.requestHash) throw new Error('IDEMPOTENCY_CONFLICT');
+          if (canonicalJson(existing) !== canonicalJson(receipt)) throw new Error('IDEMPOTENCY_CONFLICT');
           return clone(existing);
         }
         const lookup = scopedKey(receipt.accountId, receipt.receiptId);
@@ -123,14 +109,15 @@ export function createExchangeSandbox({ opaqueKey, now = () => new Date().toISOS
       },
     },
     requestHasher: { hash: (facts) => digest(canonicalJson(facts)).toString('hex') },
-    usageLedger: new UsageExecutionLedger(),
+    usageLedger: new ReservationUsageLedger({ store: reservationStore }),
   });
   return {
     runtime,
     fixture: { accountId, holdingId, model, provider, region, slot: clone(slot), units },
+    inspectReservations: () => reservationStore.inspect(accountId, holdingId),
     inspect: () => ({
       providerCalls: providerAdapter.calls, providerExecutions: providerAdapter.executions,
-      unitsRemaining: holding.unitsRemaining, receiptCount: receipts.size,
+      unitsRemaining: reservationStore.snapshot().holdings[0].unitsRemaining, receiptCount: receipts.size,
     }),
   };
 }

@@ -18,6 +18,10 @@ test('one-command Exchange acceptance preserves counters and source evidence wit
   assert.equal(evidence.externalProviderCalls, 0);
   assert.equal(evidence.transport, 'http-loopback');
   assert.equal(evidence.results.length, 8);
+  assert.equal(evidence.reservationAcceptance.status, 'passed');
+  assert.equal(evidence.reservationAcceptance.peakConcurrentCalls, 2);
+  assert.equal(evidence.reservationAcceptance.during.reserved, 2);
+  assert.equal(evidence.reservationAcceptance.after.committed, 2);
   assert.deepEqual(evidence.counters, { providerCalls: 1, providerExecutions: 1, unitsRemaining: 0, receiptCount: 1 });
   assert.equal(evidence.source.files.length > 10, true);
   for (const forbidden of ['EXCHANGE_PRIVATE_BODY_MARKER', 'must-not-read-provider-key', 'Bearer ', 'echo']) {

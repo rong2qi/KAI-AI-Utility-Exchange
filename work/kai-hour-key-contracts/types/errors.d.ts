@@ -28,7 +28,10 @@ export type RuntimeErrorCode =
   | 'REQUEST_TIMEOUT'
   | 'EXECUTION_TIMEOUT'
   | 'EXCHANGE_BUSY'
-  | 'INTERNAL_ERROR';
+  | 'INTERNAL_ERROR'
+  | 'EXECUTION_IN_PROGRESS'
+  | 'EXECUTION_UNCERTAIN'
+  | 'EXECUTION_RELEASED';
 
 
 export interface RuntimeError {

@@ -12,7 +12,11 @@ Run `node scripts/exchange-sandbox-verify.mjs` from this directory for repeatabl
 
 `createExchangeSandbox` fixes the Provider to the local sandbox and supplies one synthetic preauthorized account/Holding. Account Key lifetime is independent of the hourly Grant. This is non-streaming and memory-only, with no real account issuance, booking, payment or staging deployment. A future production composition root can inject the existing Provider/storage ports without changing HTTP routing.
 
-One Runtime currently serializes each Holding for safe balance settlement; cross-worker reservations/transactions are the next seam, not a permanent serial product constraint. Same-key retries within authorization return saved output and Receipt without another deduction, including the last unit. Expired Compute remains denied: recovery of unfinished settlement after expiry needs a separate authorized recovery path. Existing committed Receipts remain readable during their receipt window. Old ledger entries without the new binding metadata fail closed and need explicit trusted migration. No claim of exactly-once upstream execution is made without supplier support.
+`createExchangeSandbox` now composes `ReservationUsageLedger` with one shared `MemoryReservationStore`. Short atomic reservations admit different requests on the same Holding concurrently when units are available; only one caller may claim a given account/idempotency key. Provider I/O occurs outside the store mutation. The existing `UsageExecutionLedger` remains supported with the Runtime's Holding-level serial guard; only a server-injected ledger declaring `admissionMode='atomic-reservation'` selects the new path. A request body cannot enable that mode.
+
+Same-key retries within authorization return saved output and Receipt without another deduction, including the last unit. An operation admitted before the hour closes may finish settlement after it closes; a new Compute remains denied. An independent authorized HTTP recovery path for previously unfinished settlement or private output retrieval after expiry is still to be built. Existing committed Receipts remain readable during their receipt window. Unknown Provider outcomes retain a pending reservation and never automatically resend or release it. Old ledger entries without binding metadata fail closed and need explicit trusted migration. Neither local claims nor a request hash establish exactly-once upstream execution.
+
+The reservation slice has completed local technical verification and awaits user acceptance; it is not automatically `ACCEPTED`. Its shared-store and snapshot reconstruction tests are in-process evidence, not disk durability, cross-process transactions, or fencing. The next integration is a production transaction store and an authorized recovery/reconciliation seam with separate evidence. No new paid Provider window is part of this work.
 
 ## Design intent
 
@@ -36,8 +40,9 @@ The public seams are small and replaceable:
 - `HourKeyPackagingStorePort`: atomically persist the packaged Offer for `(accountId, idempotencyKey)`; deployment implementations should use a database unique constraint and transaction.
 - `HoldingPort`: read, lock, and consume an existing Holding.
 - `ProviderAdapterPort`: adapt one upstream provider to KAI's normalized execution shape and receive the execution idempotency token.
-- `UsageExecutionLedger`: resume Provider success, Holding consumption, and Receipt commit by request hash and idempotency key.
-- `ReceiptWriterPort`: append a normalized usage Receipt.
+- `UsageExecutionLedgerPort`: return private output and Receipt through either the compatible serial ledger or the reservation ledger.
+- `ReservationStorePort`: atomically claim and reserve an operation, advance owned states, and expose account-scoped Holding/balance data. One store owns both reservations and their Holding balance; it does not call a Provider.
+- `ReceiptWriterPort`: atomically insert or return the same account/idempotency-bound Receipt candidate; conflicting payloads fail without a new row.
 - `ClockPort`: make hour boundaries deterministic in tests.
 
 Pure functions in `src/` sit in front of these ports and decide intent, scope, and hour-window state. Local tests call the same functions used by deployment implementations; provider SDKs belong inside provider adapters and are not required by the pure policy layer.
@@ -49,14 +54,16 @@ user request
   -> classifyIntent (pure)
   -> evaluateIntent / evaluateScope (pure)
   -> selected port
-       compute      -> UsageExecutionLedger -> ProviderAdapterPort / HoldingPort / ReceiptWriterPort
+       compute      -> UsageExecutionLedgerPort -> ProviderAdapterPort / ReceiptWriterPort
+                        legacy: HoldingPort.consume
+                        reserved: ReservationStorePort claim / commit / release
        discovery   -> OfferCatalogPort
        lock        -> OfferCatalogPort.get -> HourKeyPackagingPort -> HoldingPort
        receipt     -> ReceiptWriterPort
   -> normalized result
 ```
 
-The normal compute path never calls an Offer catalog. Ambiguous discovery intent asks before querying. Provider switching is never implicit. Compute requires an explicit Idempotency-Key of at least eight characters. The Usage Execution Ledger records Provider success, Holding consumption, and Receipt commit so a retry can resume at the first incomplete state. A Receipt is generated only after a successful usage event and records `hourKeyStatus='packaged'` together with the Offer/Holding that authorized it.
+The normal compute path never calls an Offer catalog. Ambiguous discovery intent asks before querying. Provider switching is never implicit. Compute requires an explicit Idempotency-Key of at least eight characters. Both ledger paths record successful settlement stages. The reservation path also records dispatch uncertainty and prepares a validated, immutable Receipt before calling its writer; writer output must match that candidate. A Receipt records `hourKeyStatus='packaged'` together with the Offer/Holding that authorized it.
 
 ## Slot boundary
 
@@ -65,7 +72,7 @@ The window has three independent instants: `slot_start`, `lock_deadline`, and `s
 - Before `lock_deadline`: read and lock are allowed when the grant permits them.
 - At or after `lock_deadline` and before `slot_start`: a new lock is denied.
 - At or after `slot_start` and before `slot_end`: compute is allowed when the grant and Holding permit it.
-- At or after `slot_end`: compute and lock are denied; Receipt reads remain possible.
+- At or after `slot_end`: new Compute and lock are denied; authorized Receipt reads remain possible. Already admitted in-flight execution may finish settlement without issuing another Provider request.
 
 All comparisons use ISO-8601 instants after parsing. Implementations must not use local wall-clock strings for authorization.
 
@@ -74,6 +81,7 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `types/index.d.ts`: domain types and normalized results.
 - `ports/index.d.ts`: provider-neutral ports/adapters.
 - `ports/runtime.d.ts`: the single application seam and discriminated responses.
+- `ports/reservations.d.ts`: reservation commands, eight states, entry binding, private reconstruction snapshot, and store interface.
 - `RequestHasherPort` is required by the Runtime Facade; the production implementation must hash a normalized request, never substitute `requestId`.
 - `schema/*.schema.json`: wire contracts; secrets are intentionally absent.
 - `types/errors.d.ts` and `schema/runtime-error.schema.json`: stable denial/error vocabulary.
@@ -86,6 +94,10 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `src/adapters/hour-key-packaging.mjs`: packaging adapter with an injected atomic store; it preserves market facts and provides idempotent status transition. Its default store is process-local for unit tests.
 - `src/adapters/json-hour-key-packaging-store.mjs`: restart-readable local adapter using an exclusive lock and atomic rename; production deployments should replace it with a transactional database adapter.
 - `src/usage-ledger.mjs`: resumable usage state machine; it avoids repeating recorded Provider, Holding, or Receipt steps.
+- `src/reservation-usage-ledger.mjs`: claims and reserves before Provider I/O, retains uncertain outcomes, and prepares a bound Receipt before external writing; supports recovery from recorded success without redispatch.
+- `src/reservation-store.mjs`: shared in-process atomic claim/balance adapter with owner/state/payload validation and checked snapshot reconstruction. A snapshot contains private Provider output and is not public evidence or durable persistence.
+- `src/exchange-sandbox.mjs`: local composition root using the reservation store as the authoritative Holding balance and a fixed sandbox Provider.
+- `tsconfig.json` and `tsconfig.reservations.json`: strict declaration checks plus actual `checkJs` implementation checking for `src/reservation-store.mjs`; other `.mjs` files are not yet covered by this static implementation check.
 - `src/adapters/json-usage-execution-ledger-store.mjs`: restart-readable local ledger store; production deployments should use a transactional execution ledger.
 - `src/staging-rehearsal.mjs`: local fenced transaction and immutable-artifact rehearsal; it is evidence for the staging seam, not a production database or deployment implementation.
 - `StagingTransactionalStorePort` in `ports/index.d.ts`: replaceable snapshot/transaction boundary for release state; the current in-memory store is only one adapter.
@@ -107,6 +119,7 @@ All comparisons use ISO-8601 instants after parsing. Implementations must not us
 - `StagingReleaseFacade.preview({ version })` / `.publish({ version })`: user-facing release entry points; the system obtains manifest, checks, and fence internally, then returns only a readable status, message, version, and next action.
 - `test/contracts.test.mjs` and `test/hour-key-packaging.test.mjs`: Node's built-in test runner exercising policy, wire, packaging, restart, concurrency, and corrupt-state seams.
 - `test/runtime.test.mjs`, `test/usage-ledger.test.mjs`, and `test/support/fakes.mjs`: orchestration, recovery, idempotency, and provider-token tests.
+- `test/reservation-store.test.mjs`, `test/reservation-usage-ledger.test.mjs`, and `test/reservation-runtime.test.mjs`: shared-store claims, actual overlapping local execution, balance conservation, unknown results, Receipt preparation, reconstruction, and hour-boundary tests. The Exchange verification script also records a separate real loopback HTTP overlap scenario.
 
 Run the contract tests with:
 
@@ -135,6 +148,10 @@ The catalog mode `market_data` describes read access to supply facts, not a perm
 
 The same account-bound `key_id` may reference multiple active grants. A model or provider change is represented by a new `scopeEpoch`/grant version; it is not a reason to issue a new user-facing Key. The policy selects a grant by account, requested resource, capability, and time instead of taking the first grant in storage.
 
-The Usage Execution Ledger state sequence is `started → provider_succeeded → holding_consumed → receipt_committed`. A local JSON store proves restart recovery; production still requires a transactional ledger row and an upstream Provider idempotency contract before claiming effective-once execution.
+The compatible legacy Usage Execution Ledger sequence remains `started → provider_succeeded → holding_consumed → receipt_committed`. Its existing JSON adapter has its own restart evidence; that evidence is not transferred to the new reservation store.
+
+The reservation ledger has eight states. Its successful path is `reserved → dispatching → provider_succeeded → committed → receipt_prepared → receipt_committed`; `reserved` or `dispatching` may become `released` only when the ledger knows it has not invoked the Provider, and `dispatching → uncertain` keeps its reservation. No automatic transition releases or resends an uncertain operation. `receipt_prepared` already counts as committed usage and stores the validated Receipt candidate for writer retries.
+
+The in-memory invariant is `total = available + reserved + committed`; `Holding.unitsRemaining` includes reserved units, so availability is `unitsRemaining - reserved`. A claim and reservation are one mutation, and committing one reservation decrements the Holding once. The memory adapter's `snapshot()` deep-copies private reconstruction data and restoration cross-checks entries, balances, bindings, and settlement snapshots. This helper is not required by the production store interface, whose four operations are asynchronous. It does not write storage, prove recovery after machine failure, or provide cross-process fencing. Production still needs a transaction adapter, durable execution claims and explicit reconciliation for unknown upstream results.
 
 The account Key's `expires_at` is the credential lifecycle; it does not equal an hourly slot. A Grant/Holding closes Compute at its own `slot_end`. `receipt_until` is a separate read window, so a user can inspect a private Receipt after the hour has ended without reopening Compute. Public GEO proof is always a redacted projection; full Holding and private Receipt data remain account-scoped.

@@ -4,9 +4,11 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
+    "allowJs": true,
+    "checkJs": true,
     "noEmit": true,
     "skipLibCheck": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["types/**/*.d.ts", "ports/**/*.d.ts", "typecheck/**/*.ts"]
+  "include": ["types/**/*.d.ts", "ports/**/*.d.ts", "typecheck/**/*.ts", "src/reservation-store.mjs"]
 }

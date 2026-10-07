@@ -43,6 +43,9 @@ jobs:
           mkdir -p evidence/ci
           npm run quality:verify 2>&1 | tee evidence/ci/quality.log
 
+      - name: Strictly check reservation JavaScript implementation
+        run: npx tsc -p tsconfig.reservations.json
+
       - name: Verify Exchange entry without supplier quota
         run: node scripts/exchange-sandbox-verify.mjs
 

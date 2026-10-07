@@ -24,6 +24,12 @@ const offerResource = (offer) => ({
   region: offer.resource.region,
 });
 
+const reservationOutcomeMessages = Object.freeze({
+  EXECUTION_IN_PROGRESS: 'This execution is already in progress; no second Provider call was started',
+  EXECUTION_UNCERTAIN: 'The Provider outcome is uncertain; automatic retry is disabled',
+  EXECUTION_RELEASED: 'This execution was released before calling Provider and will not be restarted',
+});
+
 /**
  * The only application seam. It owns orchestration but delegates storage,
  * catalog, clock, and provider behavior to injected ports.
@@ -46,7 +52,11 @@ export class HourKeyRuntime {
   }
 
   async handle(request) {
-    if (classifyIntent(request.userText).kind !== 'compute') return this.#handle(request);
+    // Only an injected ledger contract can select concurrent admission. Clients
+    // cannot bypass the legacy queue by adding a field to an HTTP request.
+    if (classifyIntent(request.userText).kind !== 'compute' || this.usageLedger.admissionMode === 'atomic-reservation') {
+      return this.#handle(request);
+    }
     let verified;
     try {
       verified = await this.keyVerifier.verify(request.opaqueKey, this.clock.now());
@@ -350,6 +360,9 @@ export class HourKeyRuntime {
     } catch (error) {
       if (preflightRejection) return preflightRejection;
       const code = error?.message;
+      if (Object.hasOwn(reservationOutcomeMessages, code)) {
+        return errorResponse(request.requestId, code, reservationOutcomeMessages[code], false);
+      }
       const publicCode = ['IDEMPOTENCY_CONFLICT', 'PROVIDER_UNAVAILABLE', 'HOLDING_EXHAUSTED', 'HOLDING_REQUIRED', 'RECEIPT_WRITE_FAILED'].includes(code)
         ? code : 'EXECUTION_LEDGER_FAILED';
       const retryable = !['IDEMPOTENCY_CONFLICT', 'HOLDING_EXHAUSTED', 'HOLDING_REQUIRED', 'EXECUTION_COMMAND_INVALID'].includes(code);

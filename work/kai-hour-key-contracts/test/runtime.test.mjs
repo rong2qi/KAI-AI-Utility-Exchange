@@ -76,6 +76,18 @@ test('ordinary Compute never calls Discovery and emits a Receipt', async () => {
   assert.equal(Object.hasOwn(result.receipt, 'output'), false);
 });
 
+test('Runtime preserves reservation outcomes without advertising an automatic retry', async () => {
+  for (const code of ['EXECUTION_IN_PROGRESS', 'EXECUTION_UNCERTAIN', 'EXECUTION_RELEASED']) {
+    const ledger = { admissionMode: 'atomic-reservation', executeWithResult: async () => { throw new Error(code); } };
+    const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, ledger);
+    const result = await setup.runtime.handle({ requestId: code, opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello', idempotencyKey: 'idem_atomic_outcome' });
+    assert.equal(result.kind, 'error');
+    assert.equal(result.error.code, code);
+    assert.equal(result.error.retryable, false);
+    assert.equal(setup.provider.calls, 0);
+  }
+});
+
 test('last-unit Compute can replay its result while a new request cannot call Provider', async () => {
   const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, { holdingValue: { ...holding, unitsRemaining: 1 } });
   const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello', idempotencyKey: 'idem_last_unit' };
@@ -96,7 +108,7 @@ test('last-unit Compute can replay its result while a new request cannot call Pr
 
 test('different requests competing for the last unit call Provider only once', async () => {
   const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, { holdingValue: { ...holding, unitsRemaining: 1 } });
-  const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello' };
+  const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello', admissionMode: 'atomic-reservation' };
   const results = await Promise.all([
     setup.runtime.handle({ ...command, requestId: 'one', idempotencyKey: 'idem_concurrent_1' }),
     setup.runtime.handle({ ...command, requestId: 'two', idempotencyKey: 'idem_concurrent_2' }),

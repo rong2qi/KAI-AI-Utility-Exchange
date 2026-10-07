@@ -104,7 +104,14 @@ export interface ProviderAdapterPort {
 }
 
 export interface ReceiptWriterPort {
+  /** Atomically insert or return the first Receipt for (accountId, idempotencyKey).
+   * Replays have no additional write effect; conflicting requestHash/binding/usage
+   * must fail with IDEMPOTENCY_CONFLICT, never overwrite. receiptId is account-unique.
+   * Reservation recovery passes an already prepared candidate and requires that
+   * exact candidate back. Production adapters must prove these semantics separately.
+   */
   append(receipt: UsageReceipt): Promise<UsageReceipt>;
+  /** Private lookup must remain account-scoped. */
   get(accountId: AccountId, receiptId: string): Promise<UsageReceipt | undefined>;
 }
 
@@ -154,6 +161,8 @@ export interface UsageExecutionCommand extends UsageExecutionBinding {
 }
 
 export interface UsageExecutionLedgerPort {
+  /** Only injected atomic reservation implementations may bypass per-Holding Runtime serialization. */
+  readonly admissionMode?: 'atomic-reservation';
   execute(command: UsageExecutionCommand): Promise<UsageReceipt>;
   executeWithResult(command: UsageExecutionCommand): Promise<UsageExecutionResult>;
 }

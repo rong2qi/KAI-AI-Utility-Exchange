@@ -6,7 +6,7 @@
 
 1. 检出触发工作流的精确修订；
 2. 用 package-lock.json 执行 npm ci；
-3. 执行 `npm run quality:verify`，包含 ESLint、TypeScript 声明检查、Node 覆盖率门槛（行 90%、分支 75%、函数 90%）、`internal-provider-sandbox`、`local-http-sandbox` 验证和生产依赖安全审计，并保留 `quality.log`；
+3. 执行 `npm run quality:verify`，包含 ESLint、TypeScript 声明/类型示例检查及 `reservation-store.mjs` 的严格 `checkJs` 实现检查、Node 覆盖率门槛（行 90%、分支 75%、函数 90%）、`internal-provider-sandbox`、`local-http-sandbox` 验证和依赖安全审计，并保留 `quality.log`；
 4. 执行 npm run ci:verify；
 5. 执行 `staging:rehearsal:verify`，验证 fenced transaction、重启恢复和制品摘要接缝；
 6. 执行 `staging:gate:verify`，验证制品清单、健康检查决策、自动回滚、无上一版阻断和 gate 幂等，并记录每个场景的摘要与检查结果；同时记录脱敏的用户结果投影；
@@ -61,6 +61,18 @@ CI 的通过结论限定为：
 已下载并回读 artifact `kai-hour-key-ci-evidence-37563812050-1`（ID `11458575561`），ZIP 位于 `work/kai-hour-key-contracts/evidence/ci/github-37563812050-artifact.zip`，解包目录为同名无 `.zip` 路径。实算 SHA-256 `da1559d1a557373acf1d9c295117b8dda14c5f84f1ac964c198767652e12a285` 与 GitHub 摘要相符。回读了 `ci/quality.log`、该 run 的测试 JSON/原始日志、Exchange JSON 及三份 guard；96 个 Git 跟踪包文件重算指纹 `198ae3e1cbae05711b97c6c8116243487707d673d92b8a3d1fd946e7ffbd77e6` 与 CI 相符，Exchange 证据中的逐源文件摘要亦相符。本机完整目录另有未跟踪 `.DS_Store`，因此本机目录指纹与远端跟踪源码指纹分开记录；没有为匹配而改写原始证据。Runner 的 workingTreeDirty=true 来自生成证据，不称其整棵工作区干净。此次仅触发合同 CI，没有新增 staging 部署或真实供应商运行。
 
 本片技术验证不自动记为用户 `ACCEPTED`。仅覆盖同进程、内存 sandbox、非流式结果与窗内幂等恢复；跨进程业务事务、同 Holding 并发、跨窗只结算恢复、真实 Provider、生产安全和真实 staging 回滚继续分别取证。当前部署制品未新增业务模块，没有本次部署动作。
+
+## 2026-10-07 Exchange 业务额度预占切片
+
+新增可替换 `ReservationStorePort`、`MemoryReservationStore` 与 `ReservationUsageLedger`，将操作唯一认领、额度预占及状态迁移放入同一存储边界。Exchange sandbox 已组合新账本；原 Ledger 保持串行兼容路径。余额满足 `available + reserved + committed = total`，Provider 网络调用位于短事务之外。
+
+本机 Node 24.21.0 完整质量门通过 238/238 测试，行/分支/函数覆盖率为 95.43% / 84.94% / 93.42%，依赖审计 0 漏洞。`npm run typecheck` 现在同时检查声明、类型示例和新存储 `.mjs` 实现；`npx tsc -p tsconfig.reservations.json` 可单独复核该实现。两者均不代表所有旧 `.mjs` 已静态类型化。原始日志保存为 `work/kai-hour-key-contracts/evidence/exchange-entry/local-quality-reservations-20261007.log`。
+
+正式回归覆盖共享同一 Store 的两个 Runtime、同 Holding 三路在途、同幂等键唯一调用、最后单位竞争、跨时窗拒绝/在途结算、未知结果保留预占、已知成功后的结算恢复、五个状态写入后的 ACK 丢失。独立回读发现非法 Receipt 曾先进入 Writer 才被 Store 拒绝；现通过 `receipt_prepared` 先验证并固定候选，再写外部回执，坏候选的 Writer 调用为 0。该反例和修复已加入正式回归。
+
+一键 Exchange 验收保留原八项，并增加受控本地 Provider 的两路重叠与余额前后核对；显式同步门使重叠验证不依赖固定延迟。白名单证据只记录余额、计数和源码摘要，不输出模型正文、密钥、原始异常或私有 snapshot。本次无真实供应商调用、预约、部署或费用。
+
+本片证明范围为同进程共享内存 Store 和内存 snapshot 重建协议。没有落盘数据库或跨进程事务/fencing；owner token + expected-state 是当前状态保护，不是分布式租约。未知上游结果仍需受保护的对账/恢复流程；过期后新的 Compute 仍被拒绝，独立跨窗恢复入口待后续实现。Provider 原生幂等、真实 staging 回滚和生产安全继续单独取证。技术验证通过不自动写为用户 `ACCEPTED`。
 
 ## CD 的建议门禁
 

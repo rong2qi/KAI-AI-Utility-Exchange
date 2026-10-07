@@ -1,6 +1,7 @@
 import type { AccountId, HourKeyEnvelope, Offer, UsageReceipt } from '../types/index.js';
 import type { HourKeyRuntimePort, RuntimeRequest } from '../ports/runtime.js';
 import type { HourKeyPackagingPort, HoldingPort, ProviderAdapterPort, StagingTargetPort, StagingTransactionalStorePort } from '../ports/index.js';
+import type { ReservationStorePort } from '../ports/reservations.js';
 
 const accountId: AccountId = 'acct-typecheck';
 
@@ -105,3 +106,13 @@ declare const exchangeFactory: (options: import('../ports/exchange.js').Exchange
 void exchangeFactory({ runtime, host: '127.0.0.1', maxConcurrentRequests: 8 }).listen();
 // @ts-expect-error The local sandbox gateway cannot be bound publicly.
 void exchangeFactory({ runtime, host: '0.0.0.0' });
+
+// A database adapter can satisfy the port without a synchronous memory snapshot.
+declare const reservationStore: ReservationStorePort;
+const asynchronousReservationPort: ReservationStorePort = {
+  reserve: (command) => reservationStore.reserve(command),
+  move: (command) => reservationStore.move(command),
+  getHolding: (account, id) => reservationStore.getHolding(account, id),
+  inspect: (account, id) => reservationStore.inspect(account, id),
+};
+void asynchronousReservationPort;

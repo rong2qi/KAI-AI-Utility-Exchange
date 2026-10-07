@@ -42,6 +42,37 @@ test('a consumed final unit can replay the same operation without a second debit
   assert.deepEqual(setup.inspect(), { providerCalls: 1, providerExecutions: 1, unitsRemaining: 0, receiptCount: 1 });
 });
 
+test('Receipt append accepts only the same prepared candidate and preserves the original on every conflict', async () => {
+  const setup = createExchangeSandbox({ opaqueKey, now });
+  const result = await setup.runtime.handle(compute(setup));
+  assert.equal(result.kind, 'receipt');
+  const receipt = result.receipt;
+  const writer = setup.runtime.receiptWriter;
+  const reordered = Object.fromEntries(Object.entries(receipt).reverse());
+  reordered.usage = Object.fromEntries(Object.entries(receipt.usage).reverse());
+  assert.deepEqual(await writer.append(reordered), receipt);
+  const altered = [
+    { requestHash: 'changed-hash' },
+    { receiptId: 'changed-receipt' },
+    { keyId: 'changed-key' },
+    { grantId: 'changed-grant' },
+    { offerId: 'changed-offer' },
+    { resource: { ...receipt.resource, model: 'changed-model' } },
+    { slot: { ...receipt.slot, slotEnd: '2099-01-01T00:00:00.000Z' } },
+    { usage: { inputUnits: 10, outputUnits: 20, totalUnits: 30 } },
+    { status: 'failed' },
+    { createdAt: '2026-10-07T06:13:00.000Z' },
+    { sourceUrl: 'https://kai.com/offers/changed-offer' },
+    { hourKeyStatus: 'unpackaged' },
+    { output: 'must not be attached to a Receipt' },
+  ];
+  for (const change of altered) {
+    await assert.rejects(writer.append({ ...receipt, ...change }), /IDEMPOTENCY_CONFLICT/, Object.keys(change)[0]);
+    assert.deepEqual(await writer.get(receipt.accountId, receipt.receiptId), receipt);
+  }
+  assert.deepEqual(setup.inspect(), { providerCalls: 1, providerExecutions: 1, unitsRemaining: 9, receiptCount: 1 });
+});
+
 test('two competing operations cannot invoke the Provider twice for a final unit', async () => {
   const setup = createExchangeSandbox({ opaqueKey, now, units: 1 });
   const results = await Promise.all([

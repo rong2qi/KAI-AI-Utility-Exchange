@@ -1,7 +1,7 @@
 # KAI Hour Key Runtime：架构基线
 
 设计基线：以正式上线所需的接口、事实来源和验收条件组织实现；真实行情由 KAI 封装成小时权益，账户 Key 持续有效。  
-本地证据：契约、纯策略、内存 Runtime 与行情投影已有测试；真实账户履约、供应商执行和持久化接入仍需提供运行证据。  
+本地证据：契约、纯策略、内存 Runtime、行情投影与共享进程内预占 Store 已有测试；供应商实测、真实账户履约和持久化接入分别保留各自运行证据，不互相替代。
 版本：2026-10-02
 
 执行顺序补充（2026-10-07）：按用户决定，先完成 Exchange 业务封装及不消耗供应商推理额度的验证，之后从 Exchange 入口进行真实容量验收。当前顺序、下一建议切片与就绪条件统一维护在[Provider 测试计划](../docs/DAHONO_MODEL_POOL_INTEGRATION_TEST.md#当前执行顺序先完成-exchange-封装再使用真实额度验收)；本架构的账户 Key、授权、小时持仓、可替换 Provider 与回执原则不变。
@@ -33,6 +33,7 @@ Runtime Facade
   ├─ Hour Key Packaging Port # 行情事实 → 小时权益封装
   ├─ Holding Port            # 持仓与原子扣减
   ├─ Usage Execution Ledger  # Provider / Holding / Receipt 可恢复状态
+  ├─ Reservation Store Port  # 执行认领、额度预占与持仓提交属于同一原子事实
   ├─ Provider Adapter Port   # 供应商执行适配器
   ├─ Usage Port              # 用量事实
   └─ Receipt Port            # 私有回执与公共脱敏证明
@@ -43,6 +44,7 @@ Adapters（实现层）
   ├─ Hour Key Packaging Store → 持久化 (account_id, idempotency_key) 唯一事实
   ├─ KaiKey Trade/Holding Adapter
   ├─ Usage Execution Ledger Store → 记录 request_hash 与状态跃迁
+  ├─ Memory Reservation Store → 进程内共享预占、持仓余额与执行认领
   ├─ Provider A/B/C Adapter
   └─ Evidence/Receipt Adapter
 ```
@@ -92,7 +94,7 @@ slot_start <= server_now < slot_end
 
 - `lock_deadline` 是每个 Offer 的绝对时间戳；不能在代码中隐含。
 - `server_now < lock_deadline` 才允许锁定。
-- `server_now >= slot_end` 立即拒绝 Compute。
+- `server_now >= slot_end` 拒绝发起新的 Compute；窗内已准入且在途的调用可以完成结算，不追加 Provider 请求。
 - Grant/Holding 到期后允许读取私有 Receipt，不允许 Compute 或 Lock；账户 Key 仍可挂接下一小时或新模型的授权。
 - 无自动顺延；未使用权益是否可转移由持仓规则决定。
 
@@ -135,7 +137,7 @@ Discovery 工具只有在 Gateway 判定需要时才进入本次模型调用的�
 
 当前 `pricing.kai.com/v1` 通过 `ReferenceMarketAdapter` 提供真实的只读市场快照；适配器不自行创建 Trade、Holding、Usage 或 Receipt。真实行情的 `execution_eligible` 保持为源事实，`availability=unavailable` 保持不可用，而 `hour_key_status=unpackaged` 表示 KAI 尚未完成 Hour Key 封装。确认锁定时，Runtime 重新读取并校验 Offer，检查有效期、Offer lock deadline、Grant/Offer/Holding 的资源与账户绑定，调用 Hour Key Packaging Port；只有返回 `packaged`、仍可执行且未改写行情事实时才写入 Holding。不可用行情和封装失败保持可重试，不创建半成品 Holding。Compute 还必须同时满足 Grant 与 Holding 的资源范围和各自 active 时间窗。封装、交易、持仓、供应商执行、用量和回执分别由端口接入权威事实源；成功 Receipt 明确记录 `hour_key_status=packaged`。当前本地 JSON Store 已验证重启回读、并发单写、冲突拒绝和损坏状态无锁残留；生产环境仍需把同一端口替换为带唯一约束的事务存储。
 
-供应商 Adapter 只负责把统一的 `ComputeRequest` 转换为供应商请求并返回统一的 `ProviderUsage`；它接收由 Usage Execution Ledger 传入的幂等 Token，不负责意图判断、Key 授权、持仓扣减或手续费计算。Usage Execution Ledger 以 `started → provider_succeeded → holding_consumed → receipt_committed` 记录可恢复阶段；若 Provider 不承诺幂等，只能称可去重执行，不能宣称外部 exactly-once。
+供应商 Adapter 只负责把统一的 `ComputeRequest` 转换为供应商请求并返回统一的 `ProviderUsage`；它接收由 Usage Execution Ledger 传入的幂等 Token，不负责意图判断、Key 授权、持仓扣减或手续费计算。兼容的旧 Usage Execution Ledger 保留 `started → provider_succeeded → holding_consumed → receipt_committed` 状态和 Runtime 内串行保护。新 Reservation Usage Ledger 通过独立预占端口实现下述八状态；两条路径共同满足业务返回 interface，真实 Provider 不承诺幂等时均不宣称外部 exactly-once。
 
 ## 8. 上线能力与验收
 
@@ -156,6 +158,20 @@ Discovery 工具只有在 Gateway 判定需要时才进入本次模型调用的�
 
 Compute 通过 `executeWithResult` 返回 `{ output, receipt }`，原 `execute` 继续返回 Receipt；模型正文不进入公开 Receipt。Ledger 状态以账户/幂等键和授权/Holding/资源绑定恢复。HTTP 路由显式指定 Compute 或 Receipt，用户 prompt 中的购买/回执文字不会改变业务路由。`RequestedResource` 表示本次单个 model/provider/region，与授权范围的数组 `ResourceScope` 分开。
 
-单 Runtime 内以 Holding 串行保证最后单位不被双调用，获取锁后以及调用 Provider 前重新校验权限/时窗；这不是分布式事务或十路并发能力。下一片需业务额度预占/提交/释放及跨窗仅结算恢复，细节以当前测试计划为准。账户 Key 和小时 Grant 分开到期；到期、撤销和真正资源越权分别判断，不让不相关 Grant 掩盖当前失败原因。
+第一片的旧 ledger 继续由 Runtime 以 Holding 串行保护。2026-10-07 预占片新增 `ReservationUsageLedger` 与 `MemoryReservationStore`，默认 sandbox 已改用该组合：同一 Store 以短原子操作同时记录唯一执行认领和额度预占，随后释放事务执行 Provider；有足额权益的同 Holding 请求可以在同一 Runtime 及多个 Runtime 实例间并发。只有服务端注入的 ledger 声明 `admissionMode='atomic-reservation'` 才选择此路径，请求 JSON 不能开启它。调用 Provider 前仍重新核对当前权限、时窗及 Holding 绑定。账户 Key 和小时 Grant 分开到期；到期、撤销和真正资源越权分别判断，不让不相关 Grant 掩盖当前失败原因。
+
+预占状态共八种：
+
+```text
+reserved → dispatching → provider_succeeded → committed → receipt_prepared → receipt_committed
+    └────────┴─→ released        # 仅 ledger 已确认没有调用 Provider 的本地拒绝
+             └─→ uncertain      # 结果未知，继续占用预占额度
+```
+
+余额遵守 `total = available + reserved + committed`。Holding 的 `unitsRemaining` 含预占量，真实可用量为 `unitsRemaining - reserved`；提交只扣减一次，释放不扣减持仓。异常、超时或上游成功但结果未记录时保留在 `dispatching/uncertain`，不自动释放或重新发送。`receipt_prepared` 在写外部 Receipt 前固定已验证的账户、权益、请求和用量候选，外部 writer 返回值还须与候选一致；此阶段已经提交用量，不重复预占或扣减。
+
+当前验证覆盖共享进程内 Store、多 Runtime 同幂等键唯一调用、足额调用真实重叠、最后单位竞争、跨窗准入检查、在途完成与恢复候选。内存 adapter 的 `snapshot()` 仅深复制私有状态并在重建时检查记录/余额/绑定一致性，包含 Provider 私有正文，不进入公共证据；它不是生产端口的必需方法，不写磁盘，也不证明持久化或跨进程 fencing。生产下一步是异步事务存储适配器与结果待确认/结算恢复接缝，分别验证唯一约束、状态竞争、崩溃恢复和对账；Receipt writer 需按账户/幂等键原子写入或返回同一已验证候选。已在途调用跨窗结算已验证；新的跨窗恢复 HTTP 入口与其独立授权尚待实现，不能重新开放过期 Compute。
+
+本片完成技术验证，等待用户验收确认，不自动记录 `ACCEPTED`。主类型检查已对 `src/reservation-store.mjs` 开启 strict `checkJs`，同时保留领域声明检查；这不表示所有 `.mjs` 实现已静态类型化。下一步继续本地及隔离环境取证，不产生新预约或供应商费用。
 
 边界：此片 HTTP 只监听 `127.0.0.1`；非流式、合成预授权权益、内存记录、无真实成交/支付。旧 Ledger 无 binding 时失败关闭，持久化升级需可信数据迁移。没有本次生产或共享主机变更。

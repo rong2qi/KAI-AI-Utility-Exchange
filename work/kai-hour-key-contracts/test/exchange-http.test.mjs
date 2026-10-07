@@ -207,3 +207,22 @@ test('Receipt wire schema and nested allowlists exclude adapter-private properti
   assert.deepEqual(Object.keys(result.receipt).sort(), schema.required.toSorted());
   assert.equal(computeSchema.properties.receipt.$ref, schema.$id);
 });
+
+test('Exchange reports an unknown Provider result without refunding or redispatching on retry', async (t) => {
+  const sandbox = createExchangeSandbox({ opaqueKey: KEY, units: 1 });
+  const provider = sandbox.runtime.providerAdapters.get(sandbox.fixture.provider);
+  let calls = 0;
+  provider.execute = async () => { calls++; throw new Error('PRIVATE_PROVIDER_FAILURE'); };
+  const server = await start(t, sandbox.runtime);
+  const body = { holding_id: sandbox.fixture.holdingId, input: 'hello' };
+  for (let i = 0; i < 2; i++) {
+    const response = await compute(server, body);
+    assert.equal(response.status, 409);
+    const result = await response.json();
+    assert.equal(result.code, 'EXECUTION_UNCERTAIN');
+    assert.equal(result.retryable, false);
+    assert.equal(JSON.stringify(result).includes('PRIVATE_PROVIDER_FAILURE'), false);
+  }
+  assert.equal(calls, 1);
+  assert.deepEqual(await sandbox.inspectReservations(), { total: 1, available: 0, reserved: 1, committed: 0 });
+});

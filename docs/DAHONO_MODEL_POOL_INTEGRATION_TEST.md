@@ -1,6 +1,6 @@
 # Dahono 模型池 60 分钟集成测试计划
 
-这份计划把 Dahono Router 的 DeepSeek V4.1 Flash 纳入 KAI Hour Key 的 Provider 测试路线。它使用现有 `ProviderAdapterPort`，不改 Runtime、Usage Ledger 或 Receipt 契约；SSE、预约窗口和诊断响应头都封装在新 adapter 内。
+这份计划把 Dahono Router 的 DeepSeek V4.1 Flash 纳入 KAI Hour Key 的 Provider 测试路线。供应商接入沿用 `ProviderAdapterPort`，SSE、预约窗口和诊断响应头封装在 adapter 内；Exchange 的预占、结算和 Receipt 编排通过独立业务端口演进，不把供应商细节带入业务策略。
 
 ## 当前执行顺序：先完成 Exchange 封装，再使用真实额度验收
 
@@ -9,21 +9,25 @@
 封装目标沿用[架构基线](../work/KAI_HOUR_KEY_ARCHITECTURE.md)：用户使用账户 KAI Key 和已授权小时权益，通过统一入口提交请求，取得模型结果、用量与回执；系统内部完成授权、Holding/窗口校验、按已授权资源选择供应商、执行记录和持仓扣减。供应商密钥、预约身份和诊断字段由系统处理，用户不承担供应商接入参数的人工拼接。
 
 1. **第一片（已实现，验收待用户确认）：Exchange 业务入口的离线组合。** 复用现有 Runtime、端口与 OpenAPI 候选，先以受认证的 Compute 入口和 sandbox 跑通“账户/权益校验 → 执行 → 用量 → 回执”。测试账号与 Holding 使用明确的隔离夹具，不将夹具视为真实成交或支付事实。对应非法 Key、越权、过期/耗尽权益和幂等冲突均须在入口得到可核验结果，拒绝路径不调用 Provider。
-2. **补齐产品闭环与持久化接入。** 将 Offer/小时权益封装、权威账户/交易/持仓、用量账本和私有 Receipt 按现有可替换端口组合，覆盖重试、取消、重启及结果待确认；通过同一业务入口开展离线、故障和隔离 staging 验证。真实支付/成交、数据库事务及上游幂等仍分别取证。
+2. **补齐产品闭环与持久化接入。** 其中第二片“共享进程内预占与并发结算”已完成技术验证，待用户验收；生产事务存储与独立恢复接缝是下一步。继续将 Offer/小时权益封装、权威账户/交易/持仓、用量账本和私有 Receipt 按现有可替换端口组合，覆盖重试、取消、重启及结果待确认；通过同一业务入口开展离线、故障和隔离 staging 验证。真实支付/成交、数据库事务及上游幂等仍分别取证。
 3. **通过 Exchange 入口接入真实 Provider。** 业务入口保持不变，由组合根注入 Dahono adapter 和受保护密钥；完成限额、观测、取消、对账及回滚准备。供应商身份/计数/429 契约缺口只影响相应真实证据，不作为封装开发的总阻断。
 4. **封装就绪后再安排真实额度验收。** 在对应新窗口、预算和负载得到授权后，从 Exchange 入口验证四项容量目标，同时核对授权、持仓扣减与回执。保留供应商层的原始观察，以区分 Exchange 自身限流与上游 429；Exchange 本地返回 429 不能证明 Dahono 并发上限。是否需要整小时满额度试验由其独立验收目标决定。
 
 2026-10-07 第一片已提供本地受认证 `POST /v1/compute` 与私有 `GET /v1/receipts/{receipt_id}`，以及一键 sandbox 验收。模型正文与回执分别返回；账户 Key 长期有效，小时 Grant 独立到期；真实本机 HTTP 验证使用合成权益及内存账本，不联系外部 Provider。实现与离线证据不自动记为 `ACCEPTED`。其余切片继续按上述顺序推进。真实验收的就绪条件是相关产品路径和保护措施已有离线/隔离环境证据，不以脚本存在、页面展示或健康检查成功代替封装完成。
 
-### 第一片的边界与下一片优先事项
+### 当前本地入口的边界与下一片优先事项
 
-验收命令：在 `work/kai-hour-key-contracts` 执行 `node scripts/exchange-sandbox-verify.mjs`。它自动创建临时测试账户密钥、以本机 HTTP 执行八项验收并销毁服务，证据在 `evidence/exchange-entry/`；无需供应商密钥。它没有用户界面、登录/订单创建、流式结果、真实存储或 staging 部署。
+验收命令：在 `work/kai-hour-key-contracts` 执行 `node scripts/exchange-sandbox-verify.mjs`。它自动创建临时测试账户密钥，以本机 HTTP 执行既有入口验收及独立的同 Holding 并发预占场景，完成后销毁服务；证据在 `evidence/exchange-entry/`，无需供应商密钥。它没有用户界面、登录/订单创建、流式结果、真实存储或 staging 部署。测试数量及固定源码结果由 [CI 证据台账](CI_CD_EVIDENCE.md) 维护。
 
-- 同一 Runtime 实例按账户和 Holding 串行，修复最后一个单位被两次调用争抢的问题；这是当前安全实现的边界，不是产品永久并发规则。下一片用可替换的业务用量预占/提交/释放事务接口允许有余额的请求并发，再验证多 worker 唯一约束及 fencing。
-- 幂等重放仅在现有 Compute 授权和时窗内可取回原输出；已提交的 Receipt 在回执授权期可读。跨窗后补写未完成结算/取回正文需要独立的恢复路径与 Receipt 授权，不能重新打开过期 Compute。
+- 旧 `UsageExecutionLedger` 继续由 Runtime 按账户/Holding 串行保护；新 `ReservationUsageLedger` 使用共享 `MemoryReservationStore`，先原子认领并预占、再在事务外执行 Provider。有足额权益的同 Holding 请求已可在同一 Runtime 和多个 Runtime 实例间并发，同幂等键仍只允许一次执行认领。默认 sandbox 已使用新组合，HTTP 请求不能自行打开该模式。
+- 新链路八状态为 `reserved → dispatching → provider_succeeded → committed → receipt_prepared → receipt_committed`，另有仅在确认尚未调用 Provider 时进入的 `released` 和结果未知时进入的 `uncertain`。未知结果保留预占，不自动释放或重发；Receipt 候选先验证、固定再交给 writer，返回值须与候选一致。writer 按账户/幂等键原子写入或返回原候选，避免并发恢复产生多份回执。
+- 余额守恒为 `total = available + reserved + committed`；共享进程内 Store 的技术验证不等于生产数据库或多进程 fencing。内存 adapter 的 `snapshot()` 只用于深复制私有状态及本地重建校验，包含私有输出，不进入公共证据，也不是生产 `ReservationStorePort` 的必需同步方法。生产端口的认领/状态推进/持仓读取/余额读取均为异步，允许数据库接入。
+- 幂等重放仅在现有 Compute 授权和时窗内可取回原输出；已提交的 Receipt 在回执授权期可读。窗内已准入且在途的调用可以跨窗结算；新的跨窗补结算/取回正文 HTTP 恢复路径和独立授权尚待实现，不能重新打开过期 Compute。
 - Ledger 新增授权/Holding/资源绑定；旧条目缺少绑定时失败关闭，迁移需从可信事实重建并独立验证，不能默默推断。当前 sandbox 数据进程退出即失效。
 - HTTP 超时为 504、本地忙为 503；客户端断开或超时不等于供应商取消。挂起任务继续占用本地名额至实际结束。真实上游“成功但未落盘”仍需结果待确认及对账，不宣称跨系统恰好一次。
 - JSON input 限 64 KiB/32 层，默认最多 8 个在途请求，HTTP 仅绑定 loopback。将来公网入口需 TLS、权威账户验证、持久化、运营限额和隔离部署证据；现有 staging 制品保持原有健康/版本入口。
+
+当前预占片完成技术验证并等待用户验收，不自动记为 `ACCEPTED`。主类型检查已将 `src/reservation-store.mjs` 纳入 strict `checkJs` 实现检查，其他 `.mjs` 尚未全量静态类型化。下一片先实现生产事务存储/恢复接缝，验证执行认领唯一约束、状态竞争、崩溃恢复、待确认对账与迁移证据；不产生新预约、费用或付费容量测试。
 
 ## 已确认的接入事实
 
@@ -53,7 +57,7 @@
 | 12–22 分钟 | 单流完整推理 | 首包、末包、结束标记、usage 可解析，诊断头齐全 | 脱敏响应与 8 个 header 数值 |
 | 22–35 分钟 | 10 路并发 SSE | 10 路无丢包、均完成、并发计数不越界 | 每路结果摘要、并发峰值 |
 | 35–42 分钟 | 第 11 路过载 | 得到 429 和 `Retry-After`，不伪造成功 Receipt | status、retry-after、错误码 |
-| 42–49 分钟 | 重试与超时 | 429 按退避重试；5xx/网络/超时可重试；401/403 不盲重试 | 错误映射和尝试次数 |
+| 42–49 分钟 | 重试与超时 | 仅按明确的未执行事实或已验证上游幂等契约重试；未知执行结果保留待确认；401/403 不盲重试 | 错误映射、尝试次数、预占与待确认记录 |
 | 49–55 分钟 | Agent/遥测检查 | Capacity、EOD、KOD 检查结果可回读，不泄露 key | agent 状态、slot/region hash |
 | 55–60 分钟 | 封存证据并释放窗口 | source fingerprint、usage、摘要、边界齐全 | `kai-dahono-provider-evidence.v1` |
 
@@ -81,7 +85,7 @@ npm run dahono:live:smoke -- --confirm-live
 
 如果密钥已经写入 GitHub `staging` Environment，使用仓库中的 **KAI Dahono live smoke** 手动工作流即可执行同一入口；工作流仍需要 `staging` 环境审批，且不会随 push 自动运行。
 
-Provider 没有被确认提供上游幂等语义，因此 evidence 记录 `upstreamIdempotency=unsupported`。现有 Usage Execution Ledger 只避免重复已经记账的步骤；如果上游已执行而本地尚未保存，崩溃后仍存在再次付费调用的风险。接入真实业务前须增加“结果待确认”状态和对账路径，或验证供应商幂等/结果查询能力，不能以本地 request hash 宣称跨系统有效一次执行。
+Provider 没有被确认提供上游幂等语义，因此 evidence 记录 `upstreamIdempotency=unsupported`。旧 Usage Execution Ledger 只避免重复已经记账的步骤；新 Reservation Usage Ledger 将已记录的 `dispatching/uncertain` 保留为占额待确认，恢复时不自动重发。当前内存状态在进程退出后仍需外部持久化支持；snapshot 重建测试不证明机器故障后的状态保留。接入真实业务前仍须提供耐久的执行认领、结果待确认与对账路径，或验证供应商幂等/结果查询能力，不能以本地 request hash 宣称跨系统有效一次执行。
 
 ### 真实 10+1 与小样本计数验收
 

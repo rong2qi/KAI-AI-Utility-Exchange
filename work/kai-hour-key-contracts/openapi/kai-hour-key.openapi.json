@@ -300,7 +300,7 @@
           }
         },
         "x-local-exchange-implemented": true,
-        "description": "Local entry: loopback only, JSON body at most 65536 bytes, input depth at most 32, finite numbers. Prompts cannot select transaction routes. On timeout, execution may still finish; retry the identical request with the same Idempotency-Key only while authorization remains valid."
+        "description": "Local entry: loopback only, JSON body at most 65536 bytes, input depth at most 32, finite numbers. Prompts cannot select transaction routes. On timeout, execution may still finish; retry the identical request with the same Idempotency-Key only while authorization remains valid. Atomic-reservation mode may return 409 EXECUTION_IN_PROGRESS, EXECUTION_UNCERTAIN, or EXECUTION_RELEASED. Unknown upstream outcomes retain their reservation and are not automatically retried. Current shared memory store does not prove cross-process persistence."
       }
     },
     "/v1/receipts/{receipt_id}": {

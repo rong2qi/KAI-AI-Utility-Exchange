@@ -34,6 +34,48 @@ function sourceEvidence() {
   };
 }
 
+async function verifyReservations() {
+  const key = randomBytes(32).toString('hex');
+  const sandbox = createExchangeSandbox({ opaqueKey: key, units: 2, now: () => '2026-10-07T02:10:00.000Z' });
+  const provider = sandbox.runtime.providerAdapters.get(sandbox.fixture.provider);
+  const execute = provider.execute.bind(provider);
+  let active = 0; let peak = 0; let entered; let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const overlapping = new Promise((resolve) => { entered = resolve; });
+  provider.execute = async (request) => {
+    active++; peak = Math.max(peak, active);
+    if (active === 2) entered();
+    try { await gate; return await execute(request); } finally { active--; }
+  };
+  const server = createExchangeServer({ runtime: sandbox.runtime });
+  let timer;
+  let requests = [];
+  try {
+    await server.listen();
+    requests = [1, 2].map((index) => fetch(`${server.address()}/v1/compute`, {
+      method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', 'idempotency-key': `parallel-${index}` },
+      body: JSON.stringify({ holding_id: sandbox.fixture.holdingId, input: 'EXCHANGE_PRIVATE_BODY_MARKER' }),
+    }));
+    await Promise.race([overlapping, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('OVERLAP_NOT_OBSERVED')), 1000); })]);
+    const during = await sandbox.inspectReservations();
+    release();
+    const responses = await Promise.all(requests);
+    for (const response of responses) { assert.equal(response.status, 200); await response.arrayBuffer(); }
+    const after = await sandbox.inspectReservations();
+    assert.equal(peak, 2);
+    assert.deepEqual(during, { total: 2, available: 0, reserved: 2, committed: 0 });
+    assert.deepEqual(after, { total: 2, available: 0, reserved: 0, committed: 2 });
+    return { status: 'passed', transport: 'http-loopback', provider: 'controlled-local-sandbox', peakConcurrentCalls: peak, during, after };
+  } catch {
+    return { status: 'failed', transport: 'http-loopback', provider: 'controlled-local-sandbox' };
+  } finally {
+    clearTimeout(timer);
+    release();
+    await Promise.allSettled(requests);
+    await server.close();
+  }
+}
+
 async function verify() {
   // Synthetic clock and ephemeral account key make acceptance repeatable across hour boundaries.
   let now = '2026-10-07T02:10:00.000Z';
@@ -77,18 +119,19 @@ async function verify() {
   } finally {
     await server.close();
   }
+  const reservationAcceptance = await verifyReservations();
   const evidence = {
-    schemaVersion: 'kai-exchange-entry-evidence.v1', status: results.every((item) => item.passed) ? 'passed' : 'failed',
+    schemaVersion: 'kai-exchange-entry-evidence.v1', status: results.every((item) => item.passed) && reservationAcceptance.status === 'passed' ? 'passed' : 'failed',
     createdAt: new Date().toISOString(), nodeVersion: process.version, source: sourceEvidence(),
     transport: 'http-loopback', externalProviderCalls: 0, fixture: 'synthetic-preauthorized-holding',
-    results, counters: sandbox.inspect(),
+    results, counters: sandbox.inspect(), reservationAcceptance,
     boundaries: ['single-process', 'memory-only', 'non-streaming', 'no-real-purchase', 'no-live-provider', 'no-production-deployment'],
   };
   const file = `${process.env.GITHUB_RUN_ID ? `github-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT || '1'}` : `local-${Date.now()}`}.json`;
   mkdirSync(outputDirectory, { recursive: true });
   writeFileSync(join(outputDirectory, file), JSON.stringify(evidence, null, 2) + '\n');
   writeFileSync(join(outputDirectory, 'LATEST.json'), JSON.stringify({ file, status: evidence.status }, null, 2) + '\n');
-  console.log(JSON.stringify({ status: evidence.status, scenarios: results.length, counters: evidence.counters, externalProviderCalls: 0 }));
+  console.log(JSON.stringify({ status: evidence.status, scenarios: results.length, counters: evidence.counters, reservationAcceptance, externalProviderCalls: 0 }));
   if (evidence.status !== 'passed') process.exitCode = 1;
 }
 await verify().catch(() => { console.error('EXCHANGE_SANDBOX_VERIFY_FAILED'); process.exitCode = 1; });
