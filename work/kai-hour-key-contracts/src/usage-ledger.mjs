@@ -1,5 +1,10 @@
+import { createHash } from 'node:crypto';
+
 const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
-const keyOf = (accountId, idempotencyKey) => accountId + ':' + idempotencyKey;
+const keyOf = (accountId, idempotencyKey) => JSON.stringify([accountId, idempotencyKey]);
+const resultOf = (entry) => ({ receipt: clone(entry.receipt), output: clone(entry.providerResult?.output) });
+const bindingFields = ['keyId', 'grantId', 'holdingId', 'offerId', 'model', 'provider', 'region'];
+const bindingOf = (command) => Object.fromEntries(bindingFields.map((field) => [field, command[field]]));
 
 export const USAGE_EXECUTION_STATES = Object.freeze([
   'started',
@@ -39,6 +44,11 @@ export class UsageExecutionLedger {
   }
 
   async execute(command) {
+    return (await this.executeWithResult(command)).receipt;
+  }
+
+  /** Private application result; the public Receipt never contains Provider output. */
+  async executeWithResult(command) {
     if (!command?.accountId || !command.idempotencyKey || !command.requestHash) throw new Error('EXECUTION_COMMAND_INVALID');
     if (!command.providerAdapter || !command.holdingPort || !command.receiptWriter || !command.buildReceipt) {
       throw new Error('EXECUTION_COMMAND_INVALID');
@@ -60,19 +70,22 @@ export class UsageExecutionLedger {
   async #executeUnlocked(command) {
     let entry = await this.store.get(command.accountId, command.idempotencyKey);
     if (entry && entry.requestHash !== command.requestHash) throw new Error('IDEMPOTENCY_CONFLICT');
+    if (entry && bindingFields.some((field) => entry.binding?.[field] !== command[field])) throw new Error('IDEMPOTENCY_CONFLICT');
     if (!entry) {
       entry = {
         accountId: command.accountId,
         idempotencyKey: command.idempotencyKey,
         requestHash: command.requestHash,
+        binding: bindingOf(command),
         state: 'started',
       };
       await this.store.save(entry);
     }
     if (!USAGE_EXECUTION_STATES.includes(entry.state)) throw new Error('EXECUTION_LEDGER_CORRUPT');
-    if (entry.state === 'receipt_committed') return clone(entry.receipt);
+    if (entry.state === 'receipt_committed') return resultOf(entry);
 
     if (entry.state === 'started') {
+      await command.beforeProviderExecution?.();
       let providerResult;
       try {
         providerResult = await command.providerAdapter.execute({
@@ -80,7 +93,7 @@ export class UsageExecutionLedger {
           region: command.region,
           input: command.providerInput,
           requestId: command.requestId,
-          idempotencyKey: command.idempotencyKey,
+          idempotencyKey: 'kai_' + createHash('sha256').update(keyOf(command.accountId, command.idempotencyKey)).digest('hex'),
         });
       } catch {
         throw new Error('PROVIDER_UNAVAILABLE');
@@ -122,6 +135,6 @@ export class UsageExecutionLedger {
       await this.store.save(entry);
     }
 
-    return clone(entry.receipt);
+    return resultOf(entry);
   }
 }

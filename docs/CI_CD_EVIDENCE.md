@@ -48,6 +48,16 @@ CI 的通过结论限定为：
 
 对应远端 [contract CI run 37444693813](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37444693813) 已成功，固定源码 `c16872b98ef1fc1d60b19a1df15b25e641aadbe6`，Node `22.23.3`，170/170 测试与全部质量门通过，行/分支/函数覆盖率 96.79% / 85.99% / 94.53%。本地 Node `24.21.0` 结果单独记证，不称为远端双版本矩阵。三项真实调用入口均在未确认时保持门禁；容量 guard 为 `blocked`，出网/使用凭据均为 false。artifact `kai-hour-key-ci-evidence-37444693813-1`（ID `11402966993`）已下载至 `work/kai-hour-key-contracts/evidence/ci/github-37444693813-artifact/`，原始 ZIP 同目录旁以 `.zip` 保存，其实算 SHA-256 与 GitHub 摘要一致：`066a252e4799ad19593a3abc54d1570edf901c1c4706e7c40ba55433f76bc225`。已回读 JSON 和原始日志，87 文件包指纹 `aec496337816bcd342c268935efd504ce5f39c3c87d04564657ac4597a68b54d` 与 5 文件容量入口指纹均按当前固定源码重算匹配；runner 因生成证据报告 `workingTreeDirty=true`，不宣称其整棵工作树干净。此次仅触发合同 CI，无新增付费容量运行或 staging 部署。
 
+## 2026-10-07 Exchange 本地业务入口切片
+
+本片在 Exchange HTTP 入口组合账户/小时权益、Runtime、Usage Ledger 与固定 sandbox Provider。独立回读发现并修复最后单位双执行、异步读取跨小时放行、编码回执 ID 无法读取、其他 Grant 掩盖到期原因；补入正式回归。后续还修复质量命令经 `tee` 输出日志时的失败传播：显式 `pipefail`，防止日志保存步骤掩盖 lint/typecheck/audit 失败。
+
+本机 Node 24.21.0 完整质量门：209/209 测试，覆盖率行/分支/函数 94.79% / 83.99% / 93.32%，lint、声明类型检查和依赖审计均通过（0 漏洞）。声明检查覆盖 `.d.ts`/类型示例，不表示全部 `.mjs` 已静态类型化。原始质量日志：`work/kai-hour-key-contracts/evidence/exchange-entry/local-quality-20261007.log`；209 测试原始证据：`evidence/ci/local-20261007024712457.json` 与同名 `.log`。
+
+一键 Exchange 验收 `node scripts/exchange-sandbox-verify.mjs` 通过八项：错密钥、越权、输出+回执、幂等重放、内容冲突、耗尽、小时到期、到期后私有回执读取。只发生一次本地 Provider 执行，扣一个单位，生成一份回执；外部 Provider 调用为 0。证据仅保存白名单结果/计数、源码摘要、Node/Git 与工作区状态，不保存账户 Key、供应商密钥、模型输入输出或原始异常。真实 loopback HTTP 不写成完全禁网；CI 的新增独立步骤上传该证据目录。
+
+本片技术验证不自动记为用户 `ACCEPTED`。仅覆盖同进程、内存 sandbox、非流式结果与窗内幂等恢复；跨进程业务事务、同 Holding 并发、跨窗只结算恢复、真实 Provider、生产安全和真实 staging 回滚继续分别取证。当前部署制品未新增业务模块，没有本次部署动作。
+
 ## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：

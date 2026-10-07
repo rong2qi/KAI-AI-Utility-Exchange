@@ -93,3 +93,15 @@ void stagingTarget.rollback({ version: 'v-typecheck', digest: 'digest-typecheck'
 
 const receiptStatus: UsageReceipt['hourKeyStatus'] = receipt.hourKeyStatus;
 void receiptStatus;
+
+// One selected resource differs from arrays of authorized scope values.
+const selectedRequest: RuntimeRequest = { ...request, requestedResource: { model: 'model-typecheck' } };
+void selectedRequest;
+// @ts-expect-error ResourceScope arrays are not a single requested resource.
+const wrongResource: RuntimeRequest = { ...request, requestedResource: { models: ['model-typecheck'] } };
+void wrongResource;
+
+declare const exchangeFactory: (options: import('../ports/exchange.js').ExchangeServerOptions) => import('../ports/exchange.js').ExchangeServerPort;
+void exchangeFactory({ runtime, host: '127.0.0.1', maxConcurrentRequests: 8 }).listen();
+// @ts-expect-error The local sandbox gateway cannot be bound publicly.
+void exchangeFactory({ runtime, host: '0.0.0.0' });

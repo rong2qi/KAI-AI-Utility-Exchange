@@ -64,6 +64,13 @@ export interface ResourceScope {
   readonly regions: readonly RegionId[];
 }
 
+/** A single requested resource; authorization scope contains arrays of allowed values. */
+export interface RequestedResource {
+  readonly model?: ModelId;
+  readonly provider?: ProviderId;
+  readonly region?: RegionId;
+}
+
 export interface SlotWindow {
   readonly slotStart: IsoDateTime;
   readonly lockDeadline: IsoDateTime;
@@ -159,7 +166,7 @@ export interface UsageReceipt {
 export interface Intent {
   readonly kind: IntentKind;
   readonly confidence: number;
-  readonly requestedResource?: Partial<ResourceScope>;
+  readonly requestedResource?: RequestedResource;
   readonly reason: string;
 }
 
@@ -169,7 +176,7 @@ export interface PolicyContext {
   readonly grants: readonly AuthorizationGrant[];
   readonly holding?: Holding;
   readonly intent: Intent;
-  readonly requestedResource?: Partial<ResourceScope>;
+  readonly requestedResource?: RequestedResource;
 }
 
 export interface PolicyDecision {

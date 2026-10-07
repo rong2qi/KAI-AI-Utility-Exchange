@@ -39,8 +39,12 @@ jobs:
 
       - name: Run quality gates
         run: |
+          set -o pipefail
           mkdir -p evidence/ci
           npm run quality:verify 2>&1 | tee evidence/ci/quality.log
+
+      - name: Verify Exchange entry without supplier quota
+        run: node scripts/exchange-sandbox-verify.mjs
 
       - name: Run tests and write evidence
         run: npm run ci:verify -- --output-dir evidence/ci
@@ -79,6 +83,7 @@ jobs:
           name: kai-hour-key-ci-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             work/kai-hour-key-contracts/evidence/ci/
+            work/kai-hour-key-contracts/evidence/exchange-entry/
             work/kai-hour-key-contracts/evidence/provider-sandbox/
             work/kai-hour-key-contracts/evidence/provider-concurrency-quota/
             work/kai-hour-key-contracts/evidence/local-http-sandbox/

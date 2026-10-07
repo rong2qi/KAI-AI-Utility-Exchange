@@ -7,7 +7,7 @@ import type {
   Offer,
   OfferId,
   PolicyDecision,
-  ResourceScope,
+  RequestedResource,
   UsageReceipt,
 } from '../types/index.js';
 
@@ -22,7 +22,7 @@ export interface KeyVerifierPort {
 
 export interface OfferQuery {
   readonly accountId: AccountId;
-  readonly requestedResource?: Partial<ResourceScope>;
+  readonly requestedResource?: RequestedResource;
   readonly at: IsoDateTime;
 }
 
@@ -85,6 +85,7 @@ export interface ProviderExecutionRequest {
   readonly region: string;
   readonly input: unknown;
   readonly requestId: string;
+  /** Runtime supplies a stable hash scoped to the account and client idempotency key. */
   readonly idempotencyKey: string;
 }
 
@@ -109,14 +110,52 @@ export interface ReceiptWriterPort {
 
 export type UsageExecutionState = 'started' | 'provider_succeeded' | 'holding_consumed' | 'receipt_committed';
 
+/** These facts cannot change while resuming one account-bound execution. */
+export interface UsageExecutionBinding {
+  readonly keyId: string;
+  readonly grantId: string;
+  readonly holdingId: string;
+  readonly offerId: string;
+  readonly model: string;
+  readonly provider: string;
+  readonly region: string;
+}
+
 export interface UsageExecutionLedgerEntry {
   readonly accountId: AccountId;
   readonly idempotencyKey: string;
   readonly requestHash: string;
+  readonly binding: UsageExecutionBinding;
   readonly state: UsageExecutionState;
   readonly providerResult?: ProviderExecutionResult;
   readonly holding?: Holding;
   readonly receipt?: UsageReceipt;
+}
+
+/** Private Compute response; output must not be copied into public evidence or Receipts. */
+export interface UsageExecutionResult {
+  readonly receipt: UsageReceipt;
+  readonly output: unknown;
+}
+
+export interface UsageExecutionCommand extends UsageExecutionBinding {
+  readonly accountId: AccountId;
+  readonly idempotencyKey: string;
+  readonly requestHash: string;
+  readonly providerInput: unknown;
+  readonly requestId: string;
+  readonly at: IsoDateTime;
+  readonly providerAdapter: ProviderAdapterPort;
+  readonly holdingPort: HoldingPort;
+  readonly receiptWriter: ReceiptWriterPort;
+  /** Runs only before a new Provider execution, not on a settled result replay. */
+  readonly beforeProviderExecution?: () => void | Promise<void>;
+  readonly buildReceipt: (facts: { providerResult: ProviderExecutionResult; holding: Holding }) => UsageReceipt;
+}
+
+export interface UsageExecutionLedgerPort {
+  execute(command: UsageExecutionCommand): Promise<UsageReceipt>;
+  executeWithResult(command: UsageExecutionCommand): Promise<UsageExecutionResult>;
 }
 
 export interface UsageExecutionLedgerStorePort {
@@ -186,6 +225,6 @@ export interface IntentPolicyPort {
     readonly grants: readonly AuthorizationGrant[];
     readonly holding?: Holding;
     readonly intent: import('../types/index.js').Intent;
-    readonly requestedResource?: Partial<ResourceScope>;
+    readonly requestedResource?: RequestedResource;
   }): PolicyDecision;
 }

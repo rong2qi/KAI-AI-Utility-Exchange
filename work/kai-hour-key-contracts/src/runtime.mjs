@@ -42,9 +42,78 @@ export class HourKeyRuntime {
     this.receiptWriter = receiptWriter;
     this.requestHasher = requestHasher;
     this.usageLedger = usageLedger;
+    this.computeLocks = new Map();
   }
 
   async handle(request) {
+    if (classifyIntent(request.userText).kind !== 'compute') return this.#handle(request);
+    let verified;
+    try {
+      verified = await this.keyVerifier.verify(request.opaqueKey, this.clock.now());
+    } catch {
+      return errorResponse(request.requestId, 'KEY_INVALID', 'KAI Key could not be verified');
+    }
+    // One Runtime serializes settlement for one Holding. A database adapter must
+    // provide cross-process reservation/fencing before this can scale to workers.
+    const lockKey = JSON.stringify([verified.key.accountId, request.holdingId]);
+    const previous = this.computeLocks.get(lockKey) ?? Promise.resolve();
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    this.computeLocks.set(lockKey, gate);
+    await previous;
+    try {
+      // Re-read authorization, clock and Holding after waiting, never use a
+      // queued request's former permission or unit balance.
+      return await this.#handle(request);
+    } finally {
+      release();
+      if (this.computeLocks.get(lockKey) === gate) this.computeLocks.delete(lockKey);
+    }
+  }
+
+  async #checkProviderAdmission(request, expected) {
+    let verified;
+    try {
+      verified = await this.keyVerifier.verify(request.opaqueKey, this.clock.now());
+    } catch {
+      return errorResponse(request.requestId, 'KEY_INVALID', 'KAI Key could not be verified');
+    }
+    if (verified.key.accountId !== expected.accountId || verified.key.keyId !== expected.keyId) {
+      return errorResponse(request.requestId, 'KEY_INVALID', 'KAI Key binding changed before execution');
+    }
+    let holding;
+    try {
+      holding = await this.holdingPort.get(expected.accountId, expected.holdingId);
+    } catch {
+      return errorResponse(request.requestId, 'HOLDING_REQUIRED', 'Holding could not be read');
+    }
+    if (!holding) return errorResponse(request.requestId, 'HOLDING_REQUIRED', 'An active Holding is required for Compute');
+    // Read the clock after asynchronous port I/O. This is the last admission
+    // check before a Provider call, not a substitute for database reservations.
+    const now = this.clock.now();
+    try {
+      if (slotState(holding.slot, now) !== 'active') {
+        return errorResponse(request.requestId, 'SLOT_NOT_ACTIVE', 'Holding is outside its active execution window');
+      }
+    } catch {
+      return errorResponse(request.requestId, 'SLOT_NOT_ACTIVE', 'Holding time window could not be verified');
+    }
+    const decision = evaluateIntent({ now, key: verified.key, grants: verified.grants, holding,
+      intent: { kind: 'compute' }, requestedResource: expected.resource });
+    if (!decision.allowed) return { kind: 'policy', decision };
+    if (holding.accountId !== expected.accountId || holding.holdingId !== expected.holdingId
+      || holding.grantId !== expected.grantId || decision.grantId !== expected.grantId
+      || holding.offerId !== expected.offerId || !resourceWithinScope(holding.resourceScope, expected.resource)) {
+      return { kind: 'policy', decision: { allowed: false, code: 'DENY_SCOPE', intent: 'compute',
+        reason: 'Holding authorization or resource binding changed before execution', requiresUserConfirmation: false } };
+    }
+    if (!['held', 'active'].includes(holding.status) || holding.unitsRemaining <= 0) {
+      return errorResponse(request.requestId, 'HOLDING_EXHAUSTED', 'Holding has no executable units');
+    }
+    return { decision };
+  }
+
+  async #handle(request) {
     const now = this.clock.now();
     let verified;
     try {
@@ -205,7 +274,7 @@ export class HourKeyRuntime {
     } catch {
       return errorResponse(request.requestId, 'SLOT_NOT_ACTIVE', 'Holding time window could not be verified');
     }
-    if (!['held', 'active'].includes(existingHolding.status) || existingHolding.unitsRemaining <= 0) {
+    if (!['held', 'active', 'exhausted'].includes(existingHolding.status)) {
       return errorResponse(request.requestId, 'HOLDING_EXHAUSTED', 'Holding has no executable units');
     }
     if (request.providerInput === undefined) return errorResponse(request.requestId, 'REQUEST_INVALID', 'providerInput is required for Compute');
@@ -227,9 +296,11 @@ export class HourKeyRuntime {
     if (!adapter) return errorResponse(request.requestId, 'PROVIDER_UNAVAILABLE', `No Provider Adapter is registered for ${provider}`, true);
     const requestHash = this.requestHasher.hash({ model, provider, region, input: request.providerInput });
 
-    let receipt;
+    let execution;
+    let executionDecision = decision;
+    let preflightRejection;
     try {
-      receipt = await this.usageLedger.execute({
+      execution = await this.usageLedger.executeWithResult({
         accountId: verified.key.accountId,
         keyId: verified.key.keyId,
         grantId: decision.grantId,
@@ -246,6 +317,18 @@ export class HourKeyRuntime {
         providerAdapter: adapter,
         holdingPort: this.holdingPort,
         receiptWriter: this.receiptWriter,
+        beforeProviderExecution: async () => {
+          const admission = await this.#checkProviderAdmission(request, {
+            accountId: verified.key.accountId, keyId: verified.key.keyId, grantId: decision.grantId,
+            holdingId: existingHolding.holdingId, offerId: existingHolding.offerId,
+            resource: { model, provider, region },
+          });
+          if (admission.kind) {
+            preflightRejection = admission;
+            throw new Error('EXECUTION_PRECHECK_DENIED');
+          }
+          executionDecision = admission.decision;
+        },
         buildReceipt: ({ providerResult, holding }) => ({
           receiptId: `rcpt_${verified.key.accountId}_${request.idempotencyKey}`,
           accountId: verified.key.accountId,
@@ -265,6 +348,7 @@ export class HourKeyRuntime {
         }),
       });
     } catch (error) {
+      if (preflightRejection) return preflightRejection;
       const code = error?.message;
       const publicCode = ['IDEMPOTENCY_CONFLICT', 'PROVIDER_UNAVAILABLE', 'HOLDING_EXHAUSTED', 'HOLDING_REQUIRED', 'RECEIPT_WRITE_FAILED'].includes(code)
         ? code : 'EXECUTION_LEDGER_FAILED';
@@ -282,6 +366,6 @@ export class HourKeyRuntime {
                 : 'Usage execution ledger could not resume safely';
       return errorResponse(request.requestId, publicCode, message, retryable);
     }
-    return { kind: 'receipt', receipt, decision };
+    return { kind: 'receipt', receipt: execution.receipt, output: execution.output, decision: executionDecision };
   }
 }

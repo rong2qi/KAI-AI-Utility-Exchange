@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kai.com/schemas/compute-result.schema.json",
+  "title": "Private Exchange compute result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "output",
+    "receipt"
+  ],
+  "properties": {
+    "output": {},
+    "receipt": {
+      "$ref": "https://kai.com/schemas/usage-receipt.schema.json"
+    }
+  }
+}

@@ -149,3 +149,13 @@ Discovery 工具只有在 Gateway 判定需要时才进入本次模型调用的�
 6. **扩权与运营上线**：在稳定账户 Key 的前提下更新授权范围，补齐观测、回滚和多供应商策略。
 
 各能力可以在稳定 seam 后并行开发；上线流量按对应能力的可观察验收结果启用。真实行情进入 KAI 封装链路，交易、使用和回执分别保留权威事实与验收证据；内存测试和页面预览记录各自实际覆盖的能力。
+
+## Exchange 本地业务入口切片（2026-10-07）
+
+`exchange-http` 只处理认证头、受限 JSON、固定路由、在途名额、超时和 wire 投影；通过 `HourKeyRuntimePort.handle` 调用业务，不导入具体供应商或存储。`exchange-sandbox` 是独立组合根，注入固定本地 Provider、合成长期账户 Key/小时 Grant/Holding、内存 Ledger 与 Receipt；不接受网络 Provider 配置。未来真实组合根复用 HTTP 与 Runtime。
+
+Compute 通过 `executeWithResult` 返回 `{ output, receipt }`，原 `execute` 继续返回 Receipt；模型正文不进入公开 Receipt。Ledger 状态以账户/幂等键和授权/Holding/资源绑定恢复。HTTP 路由显式指定 Compute 或 Receipt，用户 prompt 中的购买/回执文字不会改变业务路由。`RequestedResource` 表示本次单个 model/provider/region，与授权范围的数组 `ResourceScope` 分开。
+
+单 Runtime 内以 Holding 串行保证最后单位不被双调用，获取锁后以及调用 Provider 前重新校验权限/时窗；这不是分布式事务或十路并发能力。下一片需业务额度预占/提交/释放及跨窗仅结算恢复，细节以当前测试计划为准。账户 Key 和小时 Grant 分开到期；到期、撤销和真正资源越权分别判断，不让不相关 Grant 掩盖当前失败原因。
+
+边界：此片 HTTP 只监听 `127.0.0.1`；非流式、合成预授权权益、内存记录、无真实成交/支付。旧 Ledger 无 binding 时失败关闭，持久化升级需可信数据迁移。没有本次生产或共享主机变更。

@@ -4,6 +4,16 @@ This directory is the production-compatible contract seam for the account-bound 
 
 This package owns normalized contracts and Runtime orchestration. Live provider execution, persistence, secret issuance, transport, legacy `market-gateway` integration, and preview integration are separate adapters or composition-root concerns; they can be injected through the existing ports without moving provider or storage logic into the domain package.
 
+## Local Exchange business entry
+
+Run `node scripts/exchange-sandbox-verify.mjs` from this directory for repeatable acceptance. It creates an ephemeral account key and synthetic Holding, exercises real loopback HTTP, and writes sanitized `evidence/exchange-entry/` results with source hashes. It never resolves supplier credentials or calls a live Provider. No manual key setup is required.
+
+`createExchangeServer({ runtime })` exposes authenticated `POST /v1/compute` and private `GET /v1/receipts/{receipt_id}`. Other OpenAPI paths remain candidates and are marked accordingly. Compute returns private `{ output, receipt }`; Receipt reads return no model body. The transport fixes intent by route, independent of prompt text. Body limit is 64 KiB/32 levels, default admission 8, body timeout 5 seconds and execution response timeout 30 seconds; loopback binding is mandatory. HTTP 503 `EXCHANGE_BUSY` is local admission, not upstream capacity proof. A 504 or client disconnect does not release the permit until underlying execution settles and does not prove cancellation.
+
+`createExchangeSandbox` fixes the Provider to the local sandbox and supplies one synthetic preauthorized account/Holding. Account Key lifetime is independent of the hourly Grant. This is non-streaming and memory-only, with no real account issuance, booking, payment or staging deployment. A future production composition root can inject the existing Provider/storage ports without changing HTTP routing.
+
+One Runtime currently serializes each Holding for safe balance settlement; cross-worker reservations/transactions are the next seam, not a permanent serial product constraint. Same-key retries within authorization return saved output and Receipt without another deduction, including the last unit. Expired Compute remains denied: recovery of unfinished settlement after expiry needs a separate authorized recovery path. Existing committed Receipts remain readable during their receipt window. Old ledger entries without the new binding metadata fail closed and need explicit trusted migration. No claim of exactly-once upstream execution is made without supplier support.
+
 ## Design intent
 
 ### One account key, many authorization grants

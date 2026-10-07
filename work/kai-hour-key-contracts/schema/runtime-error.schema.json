@@ -4,18 +4,80 @@
   "title": "KAI Runtime error",
   "type": "object",
   "additionalProperties": false,
-  "required": ["code", "message", "request_id", "retryable"],
+  "required": [
+    "code",
+    "message",
+    "request_id",
+    "retryable"
+  ],
   "properties": {
-    "code": { "enum": ["KEY_INVALID", "KEY_EXPIRED", "KEY_REVOKED", "SCOPE_EXPANSION_REQUIRED", "CAPABILITY_DENIED", "SLOT_NOT_ACTIVE", "LOCK_DEADLINE_CLOSED", "OFFER_STALE", "HOLDING_EXHAUSTED", "IDEMPOTENCY_CONFLICT", "SOURCE_URL_UNTRUSTED", "PROVIDER_UNAVAILABLE", "REQUEST_INVALID", "HOLDING_REQUIRED", "RECEIPT_NOT_FOUND", "CATALOG_UNAVAILABLE", "OFFER_NOT_FOUND", "HOUR_KEY_PACKAGING_FAILED", "HOLDING_LOCK_FAILED", "RECEIPT_WRITE_FAILED", "EXECUTION_LEDGER_FAILED"] },
-    "message": { "type": "string", "minLength": 1 },
-    "request_id": { "type": "string", "minLength": 1 },
-    "retryable": { "type": "boolean" },
+    "code": {
+      "enum": [
+        "KEY_INVALID",
+        "KEY_EXPIRED",
+        "KEY_REVOKED",
+        "SCOPE_EXPANSION_REQUIRED",
+        "CAPABILITY_DENIED",
+        "SLOT_NOT_ACTIVE",
+        "LOCK_DEADLINE_CLOSED",
+        "OFFER_STALE",
+        "HOLDING_EXHAUSTED",
+        "IDEMPOTENCY_CONFLICT",
+        "SOURCE_URL_UNTRUSTED",
+        "PROVIDER_UNAVAILABLE",
+        "REQUEST_INVALID",
+        "HOLDING_REQUIRED",
+        "RECEIPT_NOT_FOUND",
+        "CATALOG_UNAVAILABLE",
+        "OFFER_NOT_FOUND",
+        "HOUR_KEY_PACKAGING_FAILED",
+        "HOLDING_LOCK_FAILED",
+        "RECEIPT_WRITE_FAILED",
+        "EXECUTION_LEDGER_FAILED",
+        "AUTHORIZATION_EXPIRED",
+        "ROUTE_NOT_FOUND",
+        "METHOD_NOT_ALLOWED",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_MEDIA_TYPE",
+        "REQUEST_TIMEOUT",
+        "EXECUTION_TIMEOUT",
+        "EXCHANGE_BUSY",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retryable": {
+      "type": "boolean"
+    },
     "required_scope": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "models": { "type": "array", "items": { "type": "string" } },
-        "providers": { "type": "array", "items": { "type": "string" } },
-        "regions": { "type": "array", "items": { "type": "string" } }
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     }
   }

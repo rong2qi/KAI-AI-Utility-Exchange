@@ -2,7 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "KAI Hour Key Runtime candidate contract",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "description": "The local Exchange slice implements Compute and private Receipt reads. Other paths remain candidate contracts. The sandbox uses synthetic entitlements, not purchases or production accounts."
   },
   "servers": [
     {
@@ -38,7 +39,8 @@
           "401": {
             "$ref": "#/components/responses/Denied"
           }
-        }
+        },
+        "x-local-exchange-implemented": false
       }
     },
     "/v1/offers": {
@@ -99,7 +101,8 @@
               }
             }
           }
-        }
+        },
+        "x-local-exchange-implemented": false
       }
     },
     "/v1/holdings/lock": {
@@ -177,7 +180,8 @@
               }
             }
           }
-        }
+        },
+        "x-local-exchange-implemented": false
       }
     },
     "/v1/compute": {
@@ -195,7 +199,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 8
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]+$"
             }
           }
         ],
@@ -213,18 +219,30 @@
                 "properties": {
                   "model": {
                     "type": "string",
-                    "description": "Optional when the Holding has one authorized model; explicit values must remain within the Holding scope."
+                    "description": "Optional when the Holding has one authorized model; explicit values must remain within the Holding scope.",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[A-Za-z0-9._:-]+$"
                   },
                   "provider": {
                     "type": "string",
-                    "description": "Optional when the Holding has one authorized provider; explicit values must remain within the Holding scope."
+                    "description": "Optional when the Holding has one authorized provider; explicit values must remain within the Holding scope.",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[A-Za-z0-9._:-]+$"
                   },
                   "region": {
                     "type": "string",
-                    "description": "Optional when the Holding has one authorized region; explicit values must remain within the Holding scope."
+                    "description": "Optional when the Holding has one authorized region; explicit values must remain within the Holding scope.",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[A-Za-z0-9._:-]+$"
                   },
                   "holding_id": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[A-Za-z0-9._:-]+$"
                   },
                   "input": {}
                 }
@@ -238,7 +256,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "../schema/receipt.schema.json"
+                  "$ref": "../schema/compute-result.schema.json"
                 }
               }
             }
@@ -253,7 +271,7 @@
             "$ref": "#/components/responses/Denied"
           },
           "503": {
-            "description": "Usage execution is recoverable but its ledger or Receipt store is temporarily unavailable",
+            "description": "Local admission is full (EXCHANGE_BUSY), Provider unavailable, or settlement temporarily unavailable. Local busy is not proof of supplier 429.",
             "content": {
               "application/json": {
                 "schema": {
@@ -261,8 +279,28 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "408": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "413": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "415": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "500": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "504": {
+            "$ref": "#/components/responses/RuntimeError"
           }
-        }
+        },
+        "x-local-exchange-implemented": true,
+        "description": "Local entry: loopback only, JSON body at most 65536 bytes, input depth at most 32, finite numbers. Prompts cannot select transaction routes. On timeout, execution may still finish; retry the identical request with the same Idempotency-Key only while authorization remains valid."
       }
     },
     "/v1/receipts/{receipt_id}": {
@@ -279,7 +317,10 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "^[A-Za-z0-9._:-]+$"
             }
           }
         ],
@@ -306,8 +347,24 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "401": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "500": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "503": {
+            "$ref": "#/components/responses/RuntimeError"
+          },
+          "504": {
+            "$ref": "#/components/responses/RuntimeError"
           }
-        }
+        },
+        "x-local-exchange-implemented": true
       }
     }
   },

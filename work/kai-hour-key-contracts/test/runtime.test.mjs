@@ -69,9 +69,149 @@ test('ordinary Compute never calls Discovery and emits a Receipt', async () => {
   assert.equal(result.kind, 'receipt');
   assert.equal(catalog.queryCalls, 0);
   assert.equal(provider.calls, 1);
-  assert.equal(provider.requests[0].idempotencyKey, 'idem_compute');
+  assert.match(provider.requests[0].idempotencyKey, /^kai_[a-f0-9]{64}$/);
   assert.equal(receipts.appendCalls, 1);
   assert.equal(result.receipt.hourKeyStatus, 'packaged');
+  assert.deepEqual(result.output, { model: 'model-a', region: 'region-a', echo: 'hello' });
+  assert.equal(Object.hasOwn(result.receipt, 'output'), false);
+});
+
+test('last-unit Compute can replay its result while a new request cannot call Provider', async () => {
+  const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, { holdingValue: { ...holding, unitsRemaining: 1 } });
+  const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello', idempotencyKey: 'idem_last_unit' };
+  const first = await setup.runtime.handle({ ...command, requestId: 'first' });
+  assert.equal(first.kind, 'receipt');
+  assert.equal((await setup.holdings.get('acct_1', 'holding_a')).unitsRemaining, 0);
+  const repeated = await setup.runtime.handle({ ...command, requestId: 'retry' });
+  assert.equal(repeated.kind, 'receipt');
+  assert.deepEqual(repeated.output, { model: 'model-a', region: 'region-a', echo: 'hello' });
+  assert.deepEqual(repeated.receipt, first.receipt);
+  const newRequest = await setup.runtime.handle({ ...command, requestId: 'new', idempotencyKey: 'idem_new_request' });
+  assert.equal(newRequest.kind, 'error');
+  assert.equal(newRequest.error.code, 'HOLDING_EXHAUSTED');
+  assert.equal(setup.provider.calls, 1);
+  assert.equal(setup.holdings.consumeCalls, 1);
+  assert.equal(setup.receipts.appendCalls, 1);
+});
+
+test('different requests competing for the last unit call Provider only once', async () => {
+  const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, { holdingValue: { ...holding, unitsRemaining: 1 } });
+  const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello' };
+  const results = await Promise.all([
+    setup.runtime.handle({ ...command, requestId: 'one', idempotencyKey: 'idem_concurrent_1' }),
+    setup.runtime.handle({ ...command, requestId: 'two', idempotencyKey: 'idem_concurrent_2' }),
+  ]);
+  assert.equal(setup.provider.calls, 1);
+  assert.equal(setup.holdings.consumeCalls, 1);
+  assert.equal(results.filter((result) => result.kind === 'receipt').length, 1);
+  assert.equal(results.find((result) => result.kind === 'error').error.code, 'HOLDING_EXHAUSTED');
+});
+
+test('queued Compute rechecks time after the preceding execution settles', async () => {
+  const setup = makeRuntime();
+  let finishFirst;
+  let started;
+  const firstStarted = new Promise((resolve) => { started = resolve; });
+  const originalExecute = setup.provider.execute.bind(setup.provider);
+  setup.provider.execute = async (request) => {
+    const result = await originalExecute(request);
+    if (setup.provider.calls === 1) {
+      started();
+      await new Promise((resolve) => { finishFirst = resolve; });
+    }
+    return result;
+  };
+  const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello' };
+  const first = setup.runtime.handle({ ...command, requestId: 'first', idempotencyKey: 'idem_time_first' });
+  await firstStarted;
+  const second = setup.runtime.handle({ ...command, requestId: 'queued', idempotencyKey: 'idem_time_second' });
+  await new Promise((resolve) => setImmediate(resolve));
+  setup.clock.set('2026-10-02T19:00:00.000Z');
+  finishFirst();
+  assert.equal((await first).kind, 'receipt');
+  const rejected = await second;
+  assert.equal(rejected.kind, 'policy');
+  assert.equal(rejected.decision.allowed, false);
+  assert.equal(setup.provider.calls, 1);
+});
+
+test('queued Compute rechecks a revoked Grant before calling Provider', async () => {
+  const currentGrant = { ...grant };
+  const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, { grants: [currentGrant] });
+  let finishFirst;
+  let started;
+  const firstStarted = new Promise((resolve) => { started = resolve; });
+  const originalExecute = setup.provider.execute.bind(setup.provider);
+  setup.provider.execute = async (request) => {
+    const result = await originalExecute(request);
+    if (setup.provider.calls === 1) {
+      started();
+      await new Promise((resolve) => { finishFirst = resolve; });
+    }
+    return result;
+  };
+  const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello' };
+  const first = setup.runtime.handle({ ...command, requestId: 'first', idempotencyKey: 'idem_revoke_first' });
+  await firstStarted;
+  const second = setup.runtime.handle({ ...command, requestId: 'queued', idempotencyKey: 'idem_revoke_second' });
+  await new Promise((resolve) => setImmediate(resolve));
+  currentGrant.revokedAt = '2026-10-02T18:10:00.000Z';
+  finishFirst();
+  assert.equal((await first).kind, 'receipt');
+  const rejected = await second;
+  assert.equal(rejected.kind, 'policy');
+  assert.equal(rejected.decision.code, 'DENY_REVOKED');
+  assert.equal(setup.provider.calls, 1);
+});
+
+test('Compute does not call Provider when asynchronous Holding reads cross the window end', async () => {
+  const setup = makeRuntime('2026-10-02T18:59:59.999Z');
+  const originalGet = setup.holdings.get.bind(setup.holdings);
+  setup.holdings.get = async (...args) => {
+    const result = await originalGet(...args);
+    setup.clock.set('2026-10-02T19:00:00.001Z');
+    return result;
+  };
+  const result = await setup.runtime.handle({ requestId: 'delayed-read', opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello', idempotencyKey: 'idem_delayed_read' });
+  assert.equal(result.kind, 'error');
+  assert.equal(result.error.code, 'SLOT_NOT_ACTIVE');
+  assert.equal(setup.provider.calls, 0);
+  assert.equal(setup.holdings.consumeCalls, 0);
+});
+
+test('Compute rechecks authorization and Holding after ledger I/O and before Provider', async () => {
+  for (const change of ['grant_revoked', 'holding_exhausted', 'holding_rebound']) {
+    const currentGrant = { ...grant };
+    const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, { grants: [currentGrant] });
+    const originalSave = setup.runtime.usageLedger.store.save.bind(setup.runtime.usageLedger.store);
+    setup.runtime.usageLedger.store.save = async (entry) => {
+      const saved = await originalSave(entry);
+      if (entry.state === 'started') {
+        if (change === 'grant_revoked') currentGrant.revokedAt = '2026-10-02T18:10:00.000Z';
+        else setup.holdings.holdings.set('holding_a', change === 'holding_exhausted'
+          ? { ...holding, status: 'exhausted', unitsRemaining: 0 }
+          : { ...holding, grantId: 'grant_other' });
+      }
+      return saved;
+    };
+    const result = await setup.runtime.handle({ requestId: change, opaqueKey: 'kk_test_secret', userText: '帮我写代码', holdingId: 'holding_a', providerInput: 'hello', idempotencyKey: `idem_delayed_${change}` });
+    assert.notEqual(result.kind, 'receipt', change);
+    assert.equal(setup.provider.calls, 0, change);
+    assert.equal(setup.holdings.consumeCalls, 0, change);
+  }
+});
+
+test('same idempotency key cannot replay against another Holding', async () => {
+  const setup = makeRuntime();
+  setup.holdings.holdings.set('holding_b', { ...holding, holdingId: 'holding_b' });
+  const command = { opaqueKey: 'kk_test_secret', userText: '帮我写代码', providerInput: 'hello', idempotencyKey: 'idem_holding_binding' };
+  const first = await setup.runtime.handle({ ...command, requestId: 'first', holdingId: 'holding_a' });
+  assert.equal(first.kind, 'receipt');
+  const changed = await setup.runtime.handle({ ...command, requestId: 'changed', holdingId: 'holding_b' });
+  assert.equal(changed.kind, 'error');
+  assert.equal(changed.error.code, 'IDEMPOTENCY_CONFLICT');
+  assert.equal(setup.provider.calls, 1);
+  assert.equal((await setup.holdings.get('acct_1', 'holding_b')).unitsRemaining, 2);
 });
 
 test('explicit market intent calls KAI Offer catalog and not Provider', async () => {
@@ -309,6 +449,8 @@ test('Receipt remains readable after the compute window closes', async () => {
   later.receipts.receipts = receipts.receipts;
   const read = await later.runtime.handle({ requestId: 'req_receipt', opaqueKey: 'kk_test_secret', userText: '查看使用凭证', receiptId: 'rcpt_acct_1_idem_after' });
   assert.equal(read.kind, 'receipt');
+  assert.equal(Object.hasOwn(read, 'output'), false);
+  assert.equal(Object.hasOwn(read.receipt, 'output'), false);
 });
 
 test('provider failure does not consume Holding or write Receipt', async () => {
@@ -342,8 +484,8 @@ test('malformed sandbox Provider result does not consume Holding or write Receip
   assert.equal(setup.receipts.appendCalls, 0);
 });
 
-test('runtime resumes a failed Receipt write without repeating Provider or Holding side effects', async () => {
-  const setup = makeRuntime();
+test('runtime resumes a failed Receipt write after final-unit consumption without repeating side effects', async () => {
+  const setup = makeRuntime('2026-10-02T18:10:00.000Z', offer, undefined, undefined, { holdingValue: { ...holding, unitsRemaining: 1 } });
   const originalAppend = setup.receipts.append.bind(setup.receipts);
   let failReceipt = true;
   setup.receipts.append = async (receipt) => {
@@ -361,6 +503,7 @@ test('runtime resumes a failed Receipt write without repeating Provider or Holdi
   failReceipt = false;
   const second = await setup.runtime.handle({ requestId: 'req_receipt_retry', ...command });
   assert.equal(second.kind, 'receipt');
+  assert.deepEqual(second.output, { model: 'model-a', region: 'region-a', echo: 'hello' });
   assert.equal(setup.provider.calls, 1);
   assert.equal(setup.holdings.consumeCalls, 1);
   assert.equal(setup.receipts.appendCalls, 1);

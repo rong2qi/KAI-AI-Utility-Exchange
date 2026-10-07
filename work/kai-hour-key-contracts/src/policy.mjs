@@ -1,5 +1,5 @@
 import { classifyIntent } from './intent.mjs';
-import { activeAccountGrants, candidateGrants, capabilityForIntent, linkedGrants, resourceWithinScope } from './scope.mjs';
+import { candidateGrants, capabilityForIntent, linkedGrants, resourceWithinScope } from './scope.mjs';
 import { asTime, slotState, validateSlotWindow } from './time.mjs';
 
 const deny = (code, intent, reason, extra = {}) => ({
@@ -30,10 +30,19 @@ export function evaluateIntent({ now, key, grants, holding, intent, requestedRes
   }
   if (!grant) {
     const linked = linkedGrants({ key, grants });
-    const active = activeAccountGrants({ key, grants, now, intent });
     if (linked.length === 0) return deny('DENY_KEY', intent, 'No authorization grant is linked to this account key');
-    if (active.length === 0 && linked.some((item) => item.revokedAt && current >= asTime(item.revokedAt))) {
-      return deny('DENY_REVOKED', intent, 'All linked authorization grants are revoked');
+    const matching = linked.filter((item) => (
+      item.capabilityScope.includes(capabilityForIntent(intent.kind))
+      && resourceWithinScope(item.resourceScope, requestedResource)
+    ));
+    const unrevoked = matching.filter((item) => !item.revokedAt || current < asTime(item.revokedAt));
+    if (matching.length > 0 && unrevoked.length === 0) {
+      return deny('DENY_REVOKED', intent, 'All matching authorization grants are revoked');
+    }
+    if (unrevoked.length > 0 && unrevoked.every((item) => current >= asTime(
+      intent.kind === 'receipt' ? item.receiptUntil ?? item.expiresAt : item.expiresAt,
+    ))) {
+      return deny('DENY_EXPIRED', intent, 'Matching authorization grants have expired');
     }
     if (Object.keys(requestedResource).length > 0) {
       return deny('SCOPE_EXPANSION_REQUIRED', intent,
