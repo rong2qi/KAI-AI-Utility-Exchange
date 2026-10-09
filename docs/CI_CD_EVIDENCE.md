@@ -84,7 +84,7 @@ CI 的通过结论限定为：
 
 2026-10-09 SQLite 事务存储片的本地质量门通过 249/249 测试，Node 24.21.0，行/分支/函数覆盖率 95.62% / 85.48% / 93.88%，依赖审计 0 漏洞。日志保存在 `work/kai-hour-key-contracts/evidence/exchange-entry/local-quality-sqlite-20261009.log`。新增验收采用真实 SQLite 磁盘文件、独立子进程、SQL 写入失败以及九阶段 SIGKILL 后新进程恢复；HTTP 重建后返回同结果，Provider 总调用一次。结果未知仍保留预占，不自动恢复上游调用。详见 [存储契约与边界](SQLITE_RESERVATION_STORAGE.md)。这不证明物理掉电、多机数据库/fencing、Agent 隔离或真实供应商容量；本次 MixRoute 只登记公开信息，未调用。
 
-独立 Standards / Spec 回读均发现同一 P2：完成态聚合重放未复核持久回执行，可能掩盖回执丢失或篡改。新增正式反例先复现失败，再修复为同一事务校验回执存在、状态、ID 和完整内容；定向回归及全量质量门通过。损坏回执不触发 Provider 重调。
+独立 Standards / Spec 回读均发现同一 P2：完成态聚合重放未复核持久回执记录，可能掩盖回执丢失或篡改。新增正式反例先复现失败，再修复为同一事务校验回执存在、状态、ID 和完整内容；定向回归及全量质量门通过。损坏回执不触发 Provider 重调。 Standards 随后独立回读并通过 3 项定向测试，Spec 独立回读并通过包含删除/篡改两种反例的 1 项定向测试；两轴均确认原 P2 关闭，本片范围内无已确认残余阻断。
 
 对应远端 [contract CI run 37904539423](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37904539423) 已成功，固定源码 `4850a3f7c9626201a9db2fbe7de41c93b5674b72`，Ubuntu / Node `22.23.3`；249/249 测试，质量门和严格共享存储实现检查通过，行/分支/函数覆盖率 `97.63% / 89.04% / 94.59%`，依赖审计 0 漏洞。本机 macOS / Node 24 与远端 Linux / Node 22 分别记证，不称为完整平台矩阵。
 
