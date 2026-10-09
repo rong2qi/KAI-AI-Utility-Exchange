@@ -86,6 +86,12 @@ CI 的通过结论限定为：
 
 独立 Standards / Spec 回读均发现同一 P2：完成态聚合重放未复核持久回执行，可能掩盖回执丢失或篡改。新增正式反例先复现失败，再修复为同一事务校验回执存在、状态、ID 和完整内容；定向回归及全量质量门通过。损坏回执不触发 Provider 重调。
 
+对应远端 [contract CI run 37904539423](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/37904539423) 已成功，固定源码 `4850a3f7c9626201a9db2fbe7de41c93b5674b72`，Ubuntu / Node `22.23.3`；249/249 测试，质量门和严格共享存储实现检查通过，行/分支/函数覆盖率 `97.63% / 89.04% / 94.59%`，依赖审计 0 漏洞。本机 macOS / Node 24 与远端 Linux / Node 22 分别记证，不称为完整平台矩阵。
+
+已下载并回读 artifact `kai-hour-key-ci-evidence-37904539423-1`（ID `11603369340`）。ZIP 保存为 `work/kai-hour-key-contracts/evidence/ci/github-37904539423-artifact.zip`，解包目录为同名无 `.zip` 路径；实算 SHA-256 `93b13c93b5c65a48885f499e7c46cc54d55d464816b54f9b14c86f9fb661c2a7` 与 GitHub 摘要一致。108 个跟踪包文件重算指纹 `ea94911842e9d02ef364c6b600352350b7a19b720a657187063ec3cdab858758` 与 CI 相符，Exchange 34 文件摘要及总指纹也匹配。原始测试日志包含 SQL 独立进程/九阶段 SIGKILL 和回执破坏回归；单独 Exchange JSON 仍明确是内存 sandbox，SQLite HTTP 组合由正式 SQL 测试证明，二者不混写。
+
+三个 live guard 均 blocked；本次容量 guard 四项出网/凭据标志均 false，POST/GET 为 0。Runner 记录 workingTreeDirty=true，不称整棵工作区干净；本片仅触发合同 CI，没有部署或供应商推理。技术验证不自动记为用户 ACCEPTED。工作前已有的两份 LATEST 指针内容原样保留、未纳入本片提交。
+
 ## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：
