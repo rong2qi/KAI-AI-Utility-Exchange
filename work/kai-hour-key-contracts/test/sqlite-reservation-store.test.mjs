@@ -171,6 +171,19 @@ test('database write contention fails within a bound and does not create a parti
   await assert.rejects(blocked.inspect('account', 'holding'), /RESERVATION_INVALID/);
 });
 
+test('missing or corrupted durable Receipts cannot be hidden by replaying a completed aggregate', async (t) => {
+  for (const alteration of ['delete', 'change']) {
+    const s = database(t, 1);
+    await new ReservationUsageLedger({ store: s.store }).execute(execution(s.store, async () => success));
+    const db = new DatabaseSync(s.path); t.after(() => db.close());
+    if (alteration === 'delete') db.exec('DELETE FROM receipts');
+    else db.exec("UPDATE receipts SET receipt_json=json_set(receipt_json, '$.receiptId', 'corrupted')");
+    let calls = 0;
+    await assert.rejects(new ReservationUsageLedger({ store: s.store }).execute(execution(s.store, async () => { calls++; return success; })), /RESERVATION_INVALID/);
+    assert.equal(calls, 0);
+  }
+});
+
 test('Exchange HTTP can reuse SQL ports after Runtime reconstruction with identical output and one debit', async (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'kai-exchange-sql-'));
   const path = join(directory, 'usage.sqlite');

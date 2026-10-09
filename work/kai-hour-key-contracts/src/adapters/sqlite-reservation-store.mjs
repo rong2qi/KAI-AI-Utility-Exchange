@@ -114,7 +114,18 @@ export class SqliteReservationStore {
     if (!Array.isArray(state.entries) || ids.size !== state.entries.length || state.entries.some((entry) => !ids.has(entry.idempotencyKey))) {
       throw new Error('RESERVATION_INVALID');
     }
-    return new ReservationStateMachine({ snapshot: state });
+    const machine = new ReservationStateMachine({ snapshot: state });
+    const receipts = new Map(this.#db.prepare(`SELECT r.idempotency_key, r.receipt_id, r.receipt_json FROM receipts r
+      JOIN claims c ON c.account_id=r.account_id AND c.idempotency_key=r.idempotency_key
+      WHERE c.account_id=? AND c.holding_id=?`).all(accountId, holdingId).map((row) => [row.idempotency_key, row]));
+    for (const entry of state.entries) {
+      const row = receipts.get(entry.idempotencyKey);
+      if (entry.state === 'receipt_committed' && !row) throw new Error('RESERVATION_INVALID');
+      if (row && (!['receipt_prepared', 'receipt_committed'].includes(entry.state)
+        || row.receipt_id !== entry.receipt?.receiptId
+        || canonicalReservationValue(JSON.parse(row.receipt_json)) !== canonicalReservationValue(entry.receipt))) throw new Error('RESERVATION_INVALID');
+    }
+    return machine;
   }
 
   #save(accountId, holdingId, state) {

@@ -39,7 +39,7 @@ const reopened = new SqliteReservationStore({ path: '/private/service/usage.sqli
 
 ## 验收
 
-在合同包目录执行 `node --test test/sqlite-reservation-store.test.mjs`。覆盖真实文件重开、跨进程唯一认领和最后单位、SQL 失败回滚、事务未提交 SIGKILL、九阶段 SIGKILL/新进程恢复、权限与符号链接、Schema、JSON 保真、回执与账户隔离、锁竞争、HTTP 重建后同结果单次扣量。子进程只是测试进程，不是已实现的 Agent 沙箱。测试 Provider 完全合成，无付费调用。
+在合同包目录执行 `node --test test/sqlite-reservation-store.test.mjs`。覆盖真实文件重开、跨进程唯一认领和最后单位、SQL 失败回滚、事务未提交 SIGKILL、九阶段 SIGKILL/新进程恢复、权限与符号链接、Schema、JSON 保真、回执与账户隔离、锁竞争、HTTP 重建后同结果单次扣量，以及完成态回执丢失/篡改时拒绝重放。共新增 11 项正式测试，其中一项覆盖九个进程终止检查点。子进程只是测试进程，不是已实现的 Agent 沙箱。测试 Provider 完全合成，无付费调用。
 
 完整质量门继续执行 `npm run quality:verify`，原始日志及固定源码 CI 由 `CI_CD_EVIDENCE.md` 索引。严格 checkJs 覆盖共享状态机和内存 adapter；SQLite adapter 当前由 lint、真实数据库/进程测试覆盖，未声称已完成全文件严格静态类型检查。
 

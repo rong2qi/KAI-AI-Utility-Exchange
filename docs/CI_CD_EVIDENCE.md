@@ -26,7 +26,7 @@ CI 的通过结论限定为：
 
 > 在触发工作流的源码修订、Node 22、锁定依赖和 Ubuntu runner 上，npm test 返回退出码 0。
 
-它不等同于真实 Provider、持久化存储、交易执行或生产部署已经通过。`staging-rehearsal`、`staging-gate-rehearsal` 和 `staging-runtime-rehearsal` 仍是本地故障、发布门禁、回滚和运行入口演练；真实 staging 另由受保护部署工作流和 `staging-remote` 证据证明。当前远端成功记录覆盖隔离服务、制品摘要、健康检查、当前/上一版识别和审计；回滚代码存在，但真实故障回滚仍需单独演练。`engines` 声明 Node 22 至 Node 24 的支持范围；当前远端工作流只运行 Node 22，本机 Node 24 结果单独记证，不能称为远端双版本矩阵。
+它不等同于真实 Provider、任意持久化后端、交易执行或生产部署已经通过。本轮 SQLite 本地磁盘与进程恢复的独立证明范围见下文。`staging-rehearsal`、`staging-gate-rehearsal` 和 `staging-runtime-rehearsal` 仍是本地故障、发布门禁、回滚和运行入口演练；真实 staging 另由受保护部署工作流和 `staging-remote` 证据证明。当前远端成功记录覆盖隔离服务、制品摘要、健康检查、当前/上一版识别和审计；回滚代码存在，但真实故障回滚仍需单独演练。`engines` 声明 Node 22 至 Node 24 的支持范围；当前远端工作流只运行 Node 22，本机 Node 24 结果单独记证，不能称为远端双版本矩阵。
 
 用户验收层与内部证据分开：用户只看到 `可发布`、`已激活`、`已自动回滚` 或 `需要处理`；源码、锁文件、运行时、Provider、摘要和 gateId 由系统自动核对并保留在证据中。`可发布`只来自无副作用预检，真正写入成功后才显示 `已激活`。
 
@@ -80,9 +80,13 @@ CI 的通过结论限定为：
 
 已下载并回读 artifact `kai-hour-key-ci-evidence-37579261793-1`（ID `11463891261`）。原始 ZIP 保存在 `work/kai-hour-key-contracts/evidence/ci/github-37579261793-artifact.zip`，解包目录为同名无 `.zip` 路径；实算 SHA-256 `1b3673d36208633cad33a105bd0eb590b7bc16545e5c70e2c80b203cd8cf88b3` 与 GitHub 摘要一致。已读取 `ci/quality.log`、该 run 测试 JSON/原始日志、Exchange JSON 和三份 guard；103 个 Git 跟踪包文件重算指纹 `7c72c93f429cadb9958cd32e2f553fa373a367bb1f81e0df31f38063cfbfbc73` 与 CI 相符，Exchange 32 份执行相关文件的逐文件摘要及总指纹亦匹配。预占证据为 `total=2, reserved=2, committed=0` 到 `reserved=0, committed=2`，外部 Provider 调用为 0。Runner 因生成证据报告 workingTreeDirty=true，不称其整棵工作区干净；artifact 中的历史 live 原件不是本次新增调用。此源码仅触发合同 CI，无新增部署或付费运行。
 
-## CD 的建议门禁
+## 2026-10-09 SQLite 事务存储切片
 
-2026-10-09 SQLite 事务存储片的本地质量门通过 248/248 测试，Node 24.21.0，行/分支/函数覆盖率 95.61% / 85.50% / 93.87%，依赖审计 0 漏洞。日志保存在 `work/kai-hour-key-contracts/evidence/exchange-entry/local-quality-sqlite-20261009.log`。新增验收采用真实 SQLite 磁盘文件、独立子进程、SQL 写入失败以及九阶段 SIGKILL 后新进程恢复；HTTP 重建后返回同结果，Provider 总调用一次。结果未知仍保留预占，不自动恢复上游调用。详见 [存储契约与边界](SQLITE_RESERVATION_STORAGE.md)。这不证明物理掉电、多机数据库/fencing、Agent 隔离或真实供应商容量；本次 MixRoute 只登记公开信息，未调用。
+2026-10-09 SQLite 事务存储片的本地质量门通过 249/249 测试，Node 24.21.0，行/分支/函数覆盖率 95.62% / 85.48% / 93.88%，依赖审计 0 漏洞。日志保存在 `work/kai-hour-key-contracts/evidence/exchange-entry/local-quality-sqlite-20261009.log`。新增验收采用真实 SQLite 磁盘文件、独立子进程、SQL 写入失败以及九阶段 SIGKILL 后新进程恢复；HTTP 重建后返回同结果，Provider 总调用一次。结果未知仍保留预占，不自动恢复上游调用。详见 [存储契约与边界](SQLITE_RESERVATION_STORAGE.md)。这不证明物理掉电、多机数据库/fencing、Agent 隔离或真实供应商容量；本次 MixRoute 只登记公开信息，未调用。
+
+独立 Standards / Spec 回读均发现同一 P2：完成态聚合重放未复核持久回执行，可能掩盖回执丢失或篡改。新增正式反例先复现失败，再修复为同一事务校验回执存在、状态、ID 和完整内容；定向回归及全量质量门通过。损坏回执不触发 Provider 重调。
+
+## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：
 
