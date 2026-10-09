@@ -1,5 +1,13 @@
 # Provider Sandbox 分层说明
 
+## 新供应商登记：MixRoute（2026-10-09）
+
+来源：用户提供的供应商截图。测试网站 `https://mixroute.ai/`；操作文档原址 `https://docs.mixroute.ai/en/introduction`（核查时跳转到 `https://docs.mixroute.ai/introduction`）；API Base URL `https://api.mixroute.ai/v1`。
+
+官方介绍声明提供 OpenAI 格式的多模型接口，并要求模型名称与其市场列表一致。截图没有给出本账户已授权的具体模型、API Key、额度或预算，不能将其记为已完成模型接入。当前状态：供应商信息已登记、公开文档已核查；账户内授权模型清单、价格/限额、错误/流式/幂等契约、适配器及真实调用分别待验证。网页账号与 API Key 是不同凭据；截图中的登录密码不写入仓库、证据或日志，本次未登录或调用推理接口。
+
+后续沿用 `ProviderAdapterPort` 和 Exchange 先封装再真实验收的顺序，单独保留 MixRoute scope，不替换已有讯飞或 Dahono 记录。公开依据：[MixRoute Introduction](https://docs.mixroute.ai/introduction)。
+
 ## 当前层级：internal-provider-sandbox
 
 `SandboxProviderAdapter` 是不出网的进程内 Provider 实现。它只实现 `ProviderAdapterPort`，不读取凭据，也不改变 Runtime、Holding 或 Usage Ledger 的职责。

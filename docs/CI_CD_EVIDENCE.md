@@ -82,6 +82,8 @@ CI 的通过结论限定为：
 
 ## CD 的建议门禁
 
+2026-10-09 SQLite 事务存储片的本地质量门通过 248/248 测试，Node 24.21.0，行/分支/函数覆盖率 95.61% / 85.50% / 93.87%，依赖审计 0 漏洞。日志保存在 `work/kai-hour-key-contracts/evidence/exchange-entry/local-quality-sqlite-20261009.log`。新增验收采用真实 SQLite 磁盘文件、独立子进程、SQL 写入失败以及九阶段 SIGKILL 后新进程恢复；HTTP 重建后返回同结果，Provider 总调用一次。结果未知仍保留预占，不自动恢复上游调用。详见 [存储契约与边界](SQLITE_RESERVATION_STORAGE.md)。这不证明物理掉电、多机数据库/fencing、Agent 隔离或真实供应商容量；本次 MixRoute 只登记公开信息，未调用。
+
 当前 staging 已有真实目标，CD 采用制品晋级流程：
 
 - 仅允许从已上传的 CI 证据中选择 status=passed 且源码指纹匹配的制品；

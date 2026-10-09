@@ -1,5 +1,7 @@
 # KAI Hour Key Runtime：架构基线
 
+2026-10-09 存储补充：共享预占规则提取为同步 `ReservationStateMachine`，内存 adapter 与可选 `SqliteReservationStore` 共用；SQLite 实现同机跨进程的数据库认领、余额及回执事务，契约/运行条件与证据范围见 [事务存储说明](../docs/SQLITE_RESERVATION_STORAGE.md)。其 JSON 聚合和单写者特性需在生产规模前另行评估。独立跨窗恢复、待确认对账、多机 fencing 和 [Agent 文件/网络联合隔离](../docs/AGENT_ISOLATION_PLAN.md) 仍分别建设，不能把 SQLite 进程测试当作这些能力已完成。
+
 设计基线：以正式上线所需的接口、事实来源和验收条件组织实现；真实行情由 KAI 封装成小时权益，账户 Key 持续有效。  
 本地证据：契约、纯策略、内存 Runtime、行情投影与共享进程内预占 Store 已有测试；供应商实测、真实账户履约和持久化接入分别保留各自运行证据，不互相替代。
 版本：2026-10-02

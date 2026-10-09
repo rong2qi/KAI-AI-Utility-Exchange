@@ -20,6 +20,12 @@ The reservation slice has completed local technical verification and awaits user
 
 ## Design intent
 
+### Optional persistent reservation adapter
+
+`SqliteReservationStore` adds local-disk transactions on macOS/Linux with Node 22.13+ `node:sqlite`, while the existing default sandbox remains memory-only. It implements the same reservation port and exposes a persistent `receiptWriter`. Explicit seed Holdings create a new database only; reopening never reseeds. `ReservationStateMachine` holds shared synchronous business rules, so persistence does not duplicate the memory implementation's state machine.
+
+Run `node --test test/sqlite-reservation-store.test.mjs` for independent-process contention, SIGKILL recovery, and HTTP reconstruction tests. This proves local-host process crash recovery under synthetic Provider results, not physical power-loss behavior or distributed fencing. The adapter uses one private directory, SQL unique constraints, short `BEGIN IMMEDIATE` transactions and verified WAL/FULL durability settings. Per-Holding JSON aggregates and synchronous SQLite impose scaling limits. See [storage contract and operating boundaries](../../docs/SQLITE_RESERVATION_STORAGE.md). The shared state machine remains strictly checked through its memory adapter import; this does not claim strict static checking of the new SQLite adapter.
+
 ### One account key, many authorization grants
 
 `key_id` identifies the account-bound KAI key. A model or provider change is represented by a new `AuthorizationGrant` (or a revised grant version) attached to the same key. The runtime evaluates the grant at request time; callers do not create a new key merely because the active model changes.

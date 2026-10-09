@@ -31,6 +31,8 @@
 
 ## 已确认的接入事实
 
+2026-10-09 后续存储片已增加可替换 SQLite adapter，验证范围和运行条件见 [事务存储说明](SQLITE_RESERVATION_STORAGE.md)：真实本地磁盘、同机独立进程及进程崩溃恢复；默认 sandbox 仍为内存，未部署。下一待办为独立跨窗恢复授权与待确认对账，多机数据库/fencing 等分别取证。Agent 隔离按 [渐进计划](AGENT_ISOLATION_PLAN.md) 推进。新增 MixRoute 供应商信息已登记在 [Provider 记录](PROVIDER_SANDBOX.md#新供应商登记mixroute2026-10-09)，尚未登录或使用其推理额度；不改变先封装再真实验收的顺序。
+
 - Base URL：`https://kai.dahono.com/v1`
 - 路由：`POST /v1/chat/completions`
 - 模型：`deepseek-v4.1-flash`
