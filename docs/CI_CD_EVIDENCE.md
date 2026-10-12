@@ -102,6 +102,10 @@ Spec 独立审查复现 P2：07:10 提交确认丢失后，07:11 Compute 重试�
 
 MixRoute 钥匙串状态和 USD 55 额度按用户说明登记，未读取密钥或余额；Dahono 与 MixRoute 不发起推理或预约。GEO 指广告/品牌推荐；服务端策略与终端展示证据分开，不把地域参数或签名当广告曝光证明。原有两份未提交 LATEST 指针原样保留。
 
+对应远端 [contract CI run 38206866634](https://github.com/rong2qi/KAI-AI-Utility-Exchange/actions/runs/38206866634) 成功，固定源码 `599bba5aaa747f44c945f8311beebd7e7874ed91`，Node `22.23.3`；259/259 测试，远端覆盖率行/分支/函数 `97.72% / 89.36% / 94.68%`。一键入口九项均通过，包括过期后恢复同回执/输出且合成 Provider 只调用一次。三个 live guard 均 blocked，容量 POST/GET 均 0，四项出网/凭据标志均 false。本次仅触发合同 CI，不部署服务，不使用供应商额度。
+
+原始 artifact `kai-hour-key-ci-evidence-38206866634-1`（ID `11728090822`）已下载到 `work/kai-hour-key-contracts/evidence/ci/github-38206866634-artifact.zip` 并解包到同名目录。实算 ZIP SHA-256 `9558d3c6a2f8b84776a3af7acb202baf7f117eb9c937b1297471fbab8cc3a9b0` 与 GitHub 摘要匹配。已回读测试 JSON、原始测试/质量日志、Exchange 九场景 JSON 及三份 guard；111 个 Git 跟踪包文件重算指纹 `2b9da516c77289f046e5e984a0ae364561aef712939f4cb6dc699eb8cbb42dee` 匹配，Exchange 36 个源文件逐项及总摘要也匹配。Runner workingTreeDirty=true 按原件保留，不宣称整棵工作区干净；本机 Node24 与远端 Node22 分别记证。后续证据文档提交未修改执行源码。
+
 ## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：
