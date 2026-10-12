@@ -157,7 +157,7 @@ export interface UsageExecutionCommand extends UsageExecutionBinding {
   readonly receiptWriter: ReceiptWriterPort;
   /** Runs only before a new Provider execution, not on a settled result replay. */
   readonly beforeProviderExecution?: () => void | Promise<void>;
-  readonly buildReceipt: (facts: { providerResult: ProviderExecutionResult; holding: Holding }) => UsageReceipt;
+  readonly buildReceipt: (facts: { providerResult: ProviderExecutionResult; holding: Holding; /** Present for reservation-ledger recovery; original admission time. */ reservedAt?: IsoDateTime }) => UsageReceipt;
 }
 
 export interface UsageExecutionLedgerPort {

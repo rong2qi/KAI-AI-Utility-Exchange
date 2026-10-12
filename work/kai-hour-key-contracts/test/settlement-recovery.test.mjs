@@ -176,3 +176,36 @@ test('lost settlement acknowledgements can resume while corrupt durable Receipts
     assert.deepEqual(await s.recovery.recover(s.request), { status: 'error', code: 'EXECUTION_LEDGER_FAILED' });
   }
 });
+
+test('HTTP recovery reports pending work without internals and treats malformed UTF-8 as client input', async (t) => {
+  const { createExchangeServer } = await import('../src/exchange-http.mjs');
+  const s = fixture(); await seed(s.store, 'uncertain');
+  const server = createExchangeServer({ runtime: { handle: () => { throw Error('MUST_NOT_USE_COMPUTE'); } }, recovery: s.recovery });
+  await server.listen(); t.after(() => server.close());
+  const headers = { authorization: 'Bearer local-test-key', 'content-type': 'application/json' };
+  const pending = await fetch(server.address() + '/v1/settlements/recover', { method: 'POST', headers, body: JSON.stringify({ idempotency_key: 'operation-one' }) });
+  assert.equal(pending.status, 202);
+  assert.deepEqual(await pending.json(), { status: 'pending_reconciliation', reason: 'PROVIDER_OUTCOME_NOT_RECORDED' });
+  const bad = await fetch(server.address() + '/v1/settlements/recover', { method: 'POST', headers, body: Buffer.from([0xff]) });
+  assert.equal(bad.status, 400);
+});
+
+test('Compute retry after lost commit acknowledgement preserves admission time through cross-hour recovery', async () => {
+  const { createExchangeSandbox } = await import('../src/exchange-sandbox.mjs');
+  let now = '2026-10-09T07:10:00.000Z';
+  const sandbox = createExchangeSandbox({ opaqueKey: 'local-test-key', now: () => now });
+  const store = sandbox.runtime.usageLedger.store;
+  const move = store.move.bind(store); let lost = false;
+  store.move = async (c) => { const e = await move(c); if (c.to === 'committed' && !lost) { lost = true; throw Error('ACK_LOST'); } return e; };
+  const command = { requestId: 'request', opaqueKey: 'local-test-key', userText: '执行计算', holdingId: sandbox.fixture.holdingId,
+    idempotencyKey: 'operation-one', providerInput: 'synthetic input' };
+  assert.equal((await sandbox.runtime.handle(command)).kind, 'error');
+  now = '2026-10-09T07:11:00.000Z';
+  const replay = await sandbox.runtime.handle(command); assert.equal(replay.kind, 'receipt');
+  now = '2026-10-09T08:01:00.000Z';
+  const recovered = await sandbox.recovery.recover({ opaqueKey: 'local-test-key', idempotencyKey: command.idempotencyKey });
+  assert.equal(recovered.status, 'settled');
+  assert.equal(recovered.receipt.createdAt, '2026-10-09T07:10:00.000Z');
+  assert.deepEqual(recovered.receipt, replay.receipt);
+  assert.equal(sandbox.inspect().providerCalls, 1);
+});

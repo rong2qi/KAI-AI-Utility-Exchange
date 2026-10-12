@@ -1,3 +1,4 @@
+import { buildReservationReceipt } from './reservation-settlement.mjs';
 import { canonicalizeKaiSourceUrl } from './source-policy.mjs';
 import { classifyIntent, evaluateIntent } from './policy.mjs';
 import { resourceWithinScope } from './scope.mjs';
@@ -339,22 +340,11 @@ export class HourKeyRuntime {
           }
           executionDecision = admission.decision;
         },
-        buildReceipt: ({ providerResult, holding }) => ({
-          receiptId: `rcpt_${verified.key.accountId}_${request.idempotencyKey}`,
-          accountId: verified.key.accountId,
-          keyId: verified.key.keyId,
-          grantId: decision.grantId,
-          holdingId: holding.holdingId,
-          offerId: holding.offerId,
-          idempotencyKey: request.idempotencyKey,
-          hourKeyStatus: 'packaged',
-          resource: { model, provider, region },
-          slot: holding.slot,
-          requestHash,
-          usage: providerResult.usage,
-          status: 'succeeded',
-          createdAt: now,
-          sourceUrl: canonicalizeKaiSourceUrl(`https://kai.com/offers/${holding.offerId}`),
+        buildReceipt: ({ providerResult, holding, reservedAt }) => buildReservationReceipt({
+          accountId: verified.key.accountId, idempotencyKey: request.idempotencyKey, requestHash,
+          reservedAt: reservedAt ?? now, holding, providerResult,
+          binding: { keyId: verified.key.keyId, grantId: decision.grantId,
+            holdingId: holding.holdingId, offerId: holding.offerId, model, provider, region },
         }),
       });
     } catch (error) {

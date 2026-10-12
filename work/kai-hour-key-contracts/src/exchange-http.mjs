@@ -156,21 +156,22 @@ export function createExchangeServer({ runtime, recovery, host = '127.0.0.1', po
             || (request.headers['content-encoding'] && request.headers['content-encoding'] !== 'identity')) throw fail('UNSUPPORTED_MEDIA_TYPE');
           if (isRecovery) {
             if (!recovery) throw fail('RECOVERY_UNAVAILABLE');
+            const bytes = await readBody(request, maxBodyBytes, bodyTimeoutMs);
             let body;
-            try { body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await readBody(request, maxBodyBytes, bodyTimeoutMs))); }
-            catch (error) { if (error?.code) throw error; throw fail('REQUEST_INVALID'); }
+            try { body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
+            catch { throw fail('REQUEST_INVALID'); }
             if (!plain(body) || Object.keys(body).length !== 1 || typeof body.idempotency_key !== 'string'
               || !/^[A-Za-z0-9._:-]{8,128}$/.test(body.idempotency_key)) throw fail('REQUEST_INVALID');
             command = { opaqueKey, idempotencyKey: body.idempotency_key };
           } else {
-          const idempotencyKey = singleHeader(request, 'idempotency-key');
-          if (typeof idempotencyKey !== 'string' || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) throw fail('REQUEST_INVALID');
-          const body = parseCompute(await readBody(request, maxBodyBytes, bodyTimeoutMs));
-          if (request.aborted || response.destroyed) return;
-          command = {
-            requestId, opaqueKey, userText: '执行计算', holdingId: body.holding_id, idempotencyKey,
-            providerInput: body.input, requestedResource: { model: body.model, provider: body.provider, region: body.region },
-          };
+            const idempotencyKey = singleHeader(request, 'idempotency-key');
+            if (typeof idempotencyKey !== 'string' || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) throw fail('REQUEST_INVALID');
+            const body = parseCompute(await readBody(request, maxBodyBytes, bodyTimeoutMs));
+            if (request.aborted || response.destroyed) return;
+            command = {
+              requestId, opaqueKey, userText: '执行计算', holdingId: body.holding_id, idempotencyKey,
+              providerInput: body.input, requestedResource: { model: body.model, provider: body.provider, region: body.region },
+            };
           }
         } else {
           if (request.headers['transfer-encoding'] || Number(request.headers['content-length'] ?? 0) !== 0) throw fail('REQUEST_INVALID');

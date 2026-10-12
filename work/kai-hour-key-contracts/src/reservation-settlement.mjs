@@ -26,7 +26,7 @@ export async function settleReservation({ store, entry: initial, receiptWriter, 
   if (entry.state === 'provider_succeeded') await move('committed');
   if (entry.state === 'committed') {
     let receipt;
-    try { receipt = buildReceipt ? buildReceipt({ providerResult: structuredClone(entry.providerResult), holding: structuredClone(entry.holding) }) : buildReservationReceipt(entry); }
+    try { receipt = buildReceipt ? buildReceipt({ providerResult: structuredClone(entry.providerResult), holding: structuredClone(entry.holding), reservedAt: entry.reservedAt }) : buildReservationReceipt(entry); }
     catch { throw new Error('EXECUTION_LEDGER_FAILED'); }
     await move('receipt_prepared', { receipt });
   }

@@ -92,6 +92,16 @@ CI 的通过结论限定为：
 
 三个 live guard 均 blocked；本次容量 guard 四项出网/凭据标志均 false，POST/GET 为 0。Runner 记录 workingTreeDirty=true，不称整棵工作区干净；本片仅触发合同 CI，没有部署或供应商推理。技术验证不自动记为用户 ACCEPTED。工作前已有的两份 LATEST 指针内容原样保留、未纳入本片提交。
 
+## 2026-10-12 跨小时只恢复结算切片
+
+新增显式 `POST /v1/settlements/recover` 与独立 `SettlementRecoveryPort`，只接受旧请求身份，依赖中没有 Provider。账户、原 Key/Grant、资源范围、`usage.recover` 和善后时限独立校验。计算和恢复共用结算及回执工厂。未知结果保持占额并返回待确认；不提供客户端自行指定成功/退款的接口。契约见 [跨小时结算恢复](SETTLEMENT_RECOVERY.md)。本片不等于供应商自动对账或 Agent 总预算控制。
+
+本机 Node 24.21.0 完整质量门通过 259/259，覆盖率行/分支/函数 95.74% / 85.82% / 94.06%，lint、类型检查及依赖审计通过（0 个已知漏洞）。原始日志：`work/kai-hour-key-contracts/evidence/exchange-entry/local-quality-recovery-20261012.log`。新增 10 项正式测试，包括 SQLite 五个成功检查点重开、双恢复者、确认丢失、权限变化、HTTP 输入、未知结果分流与原受理时间；一键验收增加第九项“过期后只恢复结算”。严格 checkJs 仍限于已纳入文件，不声称新增全部 JS 静态类型化。
+
+Spec 独立审查复现 P2：07:10 提交确认丢失后，07:11 Compute 重试可能让回执使用重试时间。正式反例先失败，再修复为共享结算传入持久 reservedAt；原受理时间、回执及 Provider 单次调用均通过独立复验，P2 关闭。Standards 发现相同回执构造分散的 P3 风险，统一纯工厂后确认关闭。主代理另外复现并修复非法 UTF-8 被误报 500 的问题，现为 400。两轴已报告问题无遗留，技术验证不自动记录用户 ACCEPTED。
+
+MixRoute 钥匙串状态和 USD 55 额度按用户说明登记，未读取密钥或余额；Dahono 与 MixRoute 不发起推理或预约。GEO 指广告/品牌推荐；服务端策略与终端展示证据分开，不把地域参数或签名当广告曝光证明。原有两份未提交 LATEST 指针原样保留。
+
 ## CD 的建议门禁
 
 当前 staging 已有真实目标，CD 采用制品晋级流程：
