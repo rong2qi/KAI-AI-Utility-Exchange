@@ -19,7 +19,7 @@
         "regions": { "type": "array", "items": { "type": "string", "minLength": 1 } }
       }
     },
-    "capability_scope": { "type": "array", "items": { "enum": ["compute", "discovery.read", "discovery.lock", "usage.receipt"] }, "minItems": 1 },
+    "capability_scope": { "type": "array", "items": { "enum": ["compute", "discovery.read", "discovery.lock", "usage.receipt", "usage.recover"] }, "minItems": 1 },
     "slot": {
       "type": "object", "additionalProperties": false,
       "required": ["slot_start", "lock_deadline", "slot_end", "time_zone"],

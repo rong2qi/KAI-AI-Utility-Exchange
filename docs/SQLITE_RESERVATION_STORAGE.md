@@ -43,6 +43,6 @@ const reopened = new SqliteReservationStore({ path: '/private/service/usage.sqli
 
 完整质量门继续执行 `npm run quality:verify`，原始日志及固定源码 CI 由 `CI_CD_EVIDENCE.md` 索引。严格 checkJs 覆盖共享状态机和内存 adapter；SQLite adapter 当前由 lint、真实数据库/进程测试覆盖，未声称已完成全文件严格静态类型检查。
 
-下一步：跨窗“只恢复结算”授权入口与待确认对账；明确结果的权威来源后才改变不确定占额。物理掉电、磁盘故障、备份恢复、网络数据库、生产规模负载、真实 Provider、staging 故障回滚和 Agent OS 隔离继续分别取证。
+2026-10-12：跨窗“只恢复结算”授权入口及待确认分流已进入 [下一切片](SETTLEMENT_RECOVERY.md)，不含供应商裁决或自动退款。后续：可信对账；明确结果的权威来源后才改变不确定占额。物理掉电、磁盘故障、备份恢复、网络数据库、生产规模负载、真实 Provider、staging 故障回滚和 Agent OS 隔离继续分别取证。
 
 参考：[Node 22.13 SQLite](https://nodejs.org/download/release/v22.13.0/docs/api/sqlite.html)、[SQLite 事务](https://sqlite.org/lang_transaction.html)、[SQLite synchronous](https://sqlite.org/pragma.html#pragma_synchronous)。

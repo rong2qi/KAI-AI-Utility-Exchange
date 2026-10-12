@@ -172,6 +172,13 @@ export class SqliteReservationStore {
     return this.#transaction(() => this.#load(accountId, holdingId).inspect(accountId, holdingId), false);
   }
 
+  async getReservation(accountId, idempotencyKey) {
+    return this.#transaction(() => {
+      const claim = this.#claim(accountId, idempotencyKey);
+      return claim ? this.#load(accountId, claim.holding_id).getReservation(accountId, idempotencyKey) : undefined;
+    }, false);
+  }
+
   get receiptWriter() {
     return { append: (receipt) => this.#append(receipt), get: (accountId, receiptId) => this.#getReceipt(accountId, receiptId) };
   }

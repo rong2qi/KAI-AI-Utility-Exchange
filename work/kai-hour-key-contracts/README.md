@@ -161,3 +161,10 @@ The reservation ledger has eight states. Its successful path is `reserved → di
 The in-memory invariant is `total = available + reserved + committed`; `Holding.unitsRemaining` includes reserved units, so availability is `unitsRemaining - reserved`. A claim and reservation are one mutation, and committing one reservation decrements the Holding once. The memory adapter's `snapshot()` deep-copies private reconstruction data and restoration cross-checks entries, balances, bindings, and settlement snapshots. This helper is not required by the production store interface, whose four operations are asynchronous. It does not write storage, prove recovery after machine failure, or provide cross-process fencing. Production still needs a transaction adapter, durable execution claims and explicit reconciliation for unknown upstream results.
 
 The account Key's `expires_at` is the credential lifecycle; it does not equal an hourly slot. A Grant/Holding closes Compute at its own `slot_end`. `receipt_until` is a separate read window, so a user can inspect a private Receipt after the hour has ended without reopening Compute. Public GEO proof is always a redacted projection; full Holding and private Receipt data remain account-scoped.
+
+
+## Settle-only recovery
+
+Compose `SettlementRecovery` with a recovery store, Key verifier, clock and Receipt Writer, then pass it as `recovery` to `createExchangeServer`. The explicit route is `POST /v1/settlements/recover`, accepting only `{ "idempotency_key": "original-operation" }` with a Bearer KAI Key. It requires `usage.recover` on the original Grant and the original Key/account within `receiptUntil`. No Provider adapter is accepted. A missing adapter is an integration state (`RECOVERY_UNAVAILABLE`), not a permanent execution policy.
+
+Stored success resumes settlement; unknown/unfinished work returns `202 pending_reconciliation` without a new claim, call, release or debit. See [recovery contract and limits](../../docs/SETTLEMENT_RECOVERY.md). This does not implement automatic supplier reconciliation or task-level Agent budgets.

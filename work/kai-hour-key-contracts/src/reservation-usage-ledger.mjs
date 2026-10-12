@@ -1,3 +1,4 @@
+import { settleReservation } from './reservation-settlement.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 
 const bindingFields = ['keyId', 'grantId', 'holdingId', 'offerId', 'model', 'provider', 'region'];
@@ -73,24 +74,7 @@ export class ReservationUsageLedger {
       try { await move('provider_succeeded', { providerResult: structuredClone(providerResult) }); }
       catch { throw new Error('EXECUTION_UNCERTAIN'); }
     }
-    if (entry.state === 'provider_succeeded') {
-      try { await move('committed'); } catch { throw new Error('EXECUTION_LEDGER_FAILED'); }
-    }
-    if (entry.state === 'committed') {
-      try {
-        await move('receipt_prepared', { receipt: command.buildReceipt({
-          providerResult: structuredClone(entry.providerResult), holding: structuredClone(entry.holding),
-        }) });
-      } catch { throw new Error('EXECUTION_LEDGER_FAILED'); }
-    }
-    if (entry.state === 'receipt_prepared') {
-      let receipt;
-      try { receipt = await command.receiptWriter.append(structuredClone(entry.receipt)); }
-      catch { throw new Error('RECEIPT_WRITE_FAILED'); }
-      try { await move('receipt_committed', { receipt: structuredClone(receipt) }); }
-      catch { throw new Error('EXECUTION_LEDGER_FAILED'); }
-    }
-    if (entry.state !== 'receipt_committed') throw new Error('EXECUTION_LEDGER_FAILED');
-    return resultOf(entry);
+    return settleReservation({ store: this.store, entry, receiptWriter: command.receiptWriter,
+      buildReceipt: command.buildReceipt });
   }
 }

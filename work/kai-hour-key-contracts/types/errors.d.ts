@@ -31,7 +31,9 @@ export type RuntimeErrorCode =
   | 'INTERNAL_ERROR'
   | 'EXECUTION_IN_PROGRESS'
   | 'EXECUTION_UNCERTAIN'
-  | 'EXECUTION_RELEASED';
+  | 'EXECUTION_RELEASED'
+  | 'EXECUTION_NOT_FOUND'
+  | 'RECOVERY_UNAVAILABLE';
 
 
 export interface RuntimeError {

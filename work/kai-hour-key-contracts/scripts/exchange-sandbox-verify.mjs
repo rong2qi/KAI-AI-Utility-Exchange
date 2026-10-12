@@ -47,7 +47,7 @@ async function verifyReservations() {
     if (active === 2) entered();
     try { await gate; return await execute(request); } finally { active--; }
   };
-  const server = createExchangeServer({ runtime: sandbox.runtime });
+  const server = createExchangeServer({ runtime: sandbox.runtime, recovery: sandbox.recovery });
   let timer;
   let requests = [];
   try {
@@ -81,7 +81,7 @@ async function verify() {
   let now = '2026-10-07T02:10:00.000Z';
   const key = randomBytes(32).toString('hex');
   const sandbox = createExchangeSandbox({ opaqueKey: key, units: 1, now: () => now });
-  const server = createExchangeServer({ runtime: sandbox.runtime });
+  const server = createExchangeServer({ runtime: sandbox.runtime, recovery: sandbox.recovery });
   const results = [];
   try {
     await server.listen();
@@ -113,6 +113,14 @@ async function verify() {
     record('expired_grant_zero_extra_execution', expired.status === 403 && (await expired.json()).code === 'AUTHORIZATION_EXPIRED' && sandbox.inspect().providerCalls === 1);
     const receipt = await fetch(`${server.address()}/v1/receipts/${encodeURIComponent(result.receipt.receipt_id)}`, { headers });
     record('private_receipt_after_expiry', receipt.status === 200 && JSON.stringify(await receipt.json()) === JSON.stringify(result.receipt));
+    const recovered = await fetch(`${server.address()}/v1/settlements/recover`, {
+      method: 'POST', headers, body: JSON.stringify({ idempotency_key: 'exchange-acceptance-01' }),
+    });
+    const recovery = await recovered.json();
+    record('settlement_only_after_expiry', recovered.status === 200 && recovery.status === 'settled'
+      && JSON.stringify(recovery.receipt) === JSON.stringify(result.receipt)
+      && JSON.stringify(recovery.output) === JSON.stringify(result.output) && sandbox.inspect().providerCalls === 1);
+
   } catch {
     // Do not serialize request/response/exception objects into evidence.
     results.push({ scenario: 'verification_completed', passed: false });

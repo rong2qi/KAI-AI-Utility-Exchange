@@ -16,5 +16,7 @@ export class MemoryReservationStore {
   async getHolding(accountId, holdingId) { return this.#state.getHolding(accountId, holdingId); }
   /** @param {string} accountId @param {string} holdingId */
   async inspect(accountId, holdingId) { return this.#state.inspect(accountId, holdingId); }
+  /** @param {string} accountId @param {string} idempotencyKey */
+  async getReservation(accountId, idempotencyKey) { return this.#state.getReservation(accountId, idempotencyKey); }
   snapshot() { return this.#state.snapshot(); }
 }

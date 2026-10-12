@@ -1,3 +1,4 @@
+import { SettlementRecovery } from './settlement-recovery.mjs';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { HourKeyRuntime } from './runtime.mjs';
 import { HourKeyPackagingAdapter } from './adapters/hour-key-packaging.mjs';
@@ -61,7 +62,7 @@ export function createExchangeSandbox({ opaqueKey, now = () => new Date().toISOS
   };
   const grant = {
     grantId, accountId, version: 1, scopeEpoch: 1, resourceScope,
-    capabilityScope: ['compute', 'usage.receipt'], slot,
+    capabilityScope: ['compute', 'usage.receipt', 'usage.recover'], slot,
     issuedAt: iso(0), expiresAt: slot.slotEnd, receiptUntil: iso(HOUR_MS + DAY_MS),
     allowProviderSwitch: false,
   };
@@ -113,6 +114,7 @@ export function createExchangeSandbox({ opaqueKey, now = () => new Date().toISOS
   });
   return {
     runtime,
+    recovery: new SettlementRecovery({ store: reservationStore, receiptWriter: runtime.receiptWriter, keyVerifier: runtime.keyVerifier, clock: runtime.clock }),
     fixture: { accountId, holdingId, model, provider, region, slot: clone(slot), units },
     inspectReservations: () => reservationStore.inspect(accountId, holdingId),
     inspect: () => ({

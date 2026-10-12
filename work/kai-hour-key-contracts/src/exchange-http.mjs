@@ -6,6 +6,7 @@ const ERROR_STATUS = {
   SCOPE_EXPANSION_REQUIRED: 403, SLOT_NOT_ACTIVE: 409, HOLDING_EXHAUSTED: 409,
   EXECUTION_IN_PROGRESS: 409, EXECUTION_UNCERTAIN: 409, EXECUTION_RELEASED: 409,
   IDEMPOTENCY_CONFLICT: 409, HOLDING_REQUIRED: 409, RECEIPT_NOT_FOUND: 404,
+  EXECUTION_NOT_FOUND: 404, RECOVERY_UNAVAILABLE: 503,
   PROVIDER_UNAVAILABLE: 503, EXECUTION_LEDGER_FAILED: 503, RECEIPT_WRITE_FAILED: 503,
   REQUEST_INVALID: 400, ROUTE_NOT_FOUND: 404, METHOD_NOT_ALLOWED: 405,
   PAYLOAD_TOO_LARGE: 413, UNSUPPORTED_MEDIA_TYPE: 415, REQUEST_TIMEOUT: 408,
@@ -114,8 +115,8 @@ function receiptJson(receipt) {
 }
 
 /** Local application entry. Runtime owns authorization/settlement; this module owns HTTP. */
-export function createExchangeServer({ runtime, host = '127.0.0.1', port = 0, maxBodyBytes = 65536, bodyTimeoutMs = 5000, executionTimeoutMs = 30000, maxConcurrentRequests = 8 } = {}) {
-  if (typeof runtime?.handle !== 'function' || host !== '127.0.0.1'
+export function createExchangeServer({ runtime, recovery, host = '127.0.0.1', port = 0, maxBodyBytes = 65536, bodyTimeoutMs = 5000, executionTimeoutMs = 30000, maxConcurrentRequests = 8 } = {}) {
+  if ((recovery !== undefined && typeof recovery?.recover !== 'function') || typeof runtime?.handle !== 'function' || host !== '127.0.0.1'
     || !Number.isInteger(port) || port < 0 || port > 65535
     || [maxBodyBytes, bodyTimeoutMs, executionTimeoutMs, maxConcurrentRequests].some((value) => !Number.isSafeInteger(value) || value < 1)
     || maxBodyBytes > 1048576 || maxConcurrentRequests > 64 || bodyTimeoutMs > 60000 || executionTimeoutMs > 300000) {
@@ -142,16 +143,26 @@ export function createExchangeServer({ runtime, host = '127.0.0.1', port = 0, ma
           if (!identifier(receiptId)) throw fail('ROUTE_NOT_FOUND');
         }
         const isCompute = path === '/v1/compute';
-        if (!isCompute && !receiptMatch) throw fail('ROUTE_NOT_FOUND');
-        if (request.method !== (isCompute ? 'POST' : 'GET')) throw fail('METHOD_NOT_ALLOWED');
+        const isRecovery = path === '/v1/settlements/recover';
+        if (!isCompute && !isRecovery && !receiptMatch) throw fail('ROUTE_NOT_FOUND');
+        if (request.method !== (isCompute || isRecovery ? 'POST' : 'GET')) throw fail('METHOD_NOT_ALLOWED');
         if (active >= maxConcurrentRequests) throw fail('EXCHANGE_BUSY');
         active++;
         admitted = true;
         let command;
-        if (isCompute) {
+        if (isCompute || isRecovery) {
           const contentType = singleHeader(request, 'content-type');
           if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(contentType ?? '')
             || (request.headers['content-encoding'] && request.headers['content-encoding'] !== 'identity')) throw fail('UNSUPPORTED_MEDIA_TYPE');
+          if (isRecovery) {
+            if (!recovery) throw fail('RECOVERY_UNAVAILABLE');
+            let body;
+            try { body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await readBody(request, maxBodyBytes, bodyTimeoutMs))); }
+            catch (error) { if (error?.code) throw error; throw fail('REQUEST_INVALID'); }
+            if (!plain(body) || Object.keys(body).length !== 1 || typeof body.idempotency_key !== 'string'
+              || !/^[A-Za-z0-9._:-]{8,128}$/.test(body.idempotency_key)) throw fail('REQUEST_INVALID');
+            command = { opaqueKey, idempotencyKey: body.idempotency_key };
+          } else {
           const idempotencyKey = singleHeader(request, 'idempotency-key');
           if (typeof idempotencyKey !== 'string' || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) throw fail('REQUEST_INVALID');
           const body = parseCompute(await readBody(request, maxBodyBytes, bodyTimeoutMs));
@@ -160,12 +171,24 @@ export function createExchangeServer({ runtime, host = '127.0.0.1', port = 0, ma
             requestId, opaqueKey, userText: '执行计算', holdingId: body.holding_id, idempotencyKey,
             providerInput: body.input, requestedResource: { model: body.model, provider: body.provider, region: body.region },
           };
+          }
         } else {
           if (request.headers['transfer-encoding'] || Number(request.headers['content-length'] ?? 0) !== 0) throw fail('REQUEST_INVALID');
           command = { requestId, opaqueKey, userText: 'receipt', receiptId };
         }
+        if (request.aborted || response.destroyed) return;
         timer = setTimeout(() => sendError(response, 'EXECUTION_TIMEOUT', requestId), executionTimeoutMs);
         // A response timeout/disconnect must not release admission for still-running work.
+        if (isRecovery) {
+          const result = await recovery.recover(command);
+          if (result?.status === 'error') return sendError(response, result.code, requestId);
+          if (result?.status === 'settled') return send(response, 200, { status: 'settled', output: result.output, receipt: receiptJson(result.receipt) }, requestId);
+          if (result?.status === 'pending_reconciliation' && ['ADMISSION_NOT_RESOLVED', 'PROVIDER_OUTCOME_NOT_RECORDED'].includes(result.reason)) {
+            return send(response, 202, { status: result.status, reason: result.reason }, requestId);
+          }
+          if (result?.status === 'released') return send(response, 200, { status: 'released' }, requestId);
+          throw fail('INTERNAL_ERROR');
+        }
         const result = await runtime.handle(command);
         if (result?.kind === 'error') return sendError(response, result.error?.code, requestId);
         if (result?.kind === 'policy') return sendError(response, POLICY_ERRORS[result.decision?.code] ?? 'CAPABILITY_DENIED', requestId);

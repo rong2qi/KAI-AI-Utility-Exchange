@@ -263,6 +263,13 @@ export class ReservationStateMachine {
     return reserved;
   }
 
+  /** Read an existing operation without creating a claim or checking Compute time.
+   * @param {string} accountId @param {string} idempotencyKey */
+  getReservation(accountId, idempotencyKey) {
+    requireThat(text(accountId) && text(idempotencyKey));
+    return clone(this.#entries.get(keyOf(accountId, idempotencyKey)));
+  }
+
   /** @param {string} accountId @param {string} holdingId */
   getHolding(accountId, holdingId) {
     return clone(this.#holdings.get(keyOf(accountId, holdingId)));

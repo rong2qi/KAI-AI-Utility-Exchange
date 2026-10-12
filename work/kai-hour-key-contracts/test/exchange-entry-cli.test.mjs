@@ -17,7 +17,8 @@ test('one-command Exchange acceptance preserves counters and source evidence wit
   assert.equal(evidence.status, 'passed');
   assert.equal(evidence.externalProviderCalls, 0);
   assert.equal(evidence.transport, 'http-loopback');
-  assert.equal(evidence.results.length, 8);
+  assert.equal(evidence.results.length, 9);
+  assert.deepEqual(evidence.results.find((r) => r.scenario === 'settlement_only_after_expiry'), { scenario: 'settlement_only_after_expiry', passed: true });
   assert.equal(evidence.reservationAcceptance.status, 'passed');
   assert.equal(evidence.reservationAcceptance.peakConcurrentCalls, 2);
   assert.equal(evidence.reservationAcceptance.during.reserved, 2);

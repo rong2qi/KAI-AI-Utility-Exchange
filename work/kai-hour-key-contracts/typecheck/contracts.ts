@@ -116,3 +116,13 @@ const asynchronousReservationPort: ReservationStorePort = {
   inspect: (account, id) => reservationStore.inspect(account, id),
 };
 void asynchronousReservationPort;
+
+
+// Recovery is a distinct optional interface; Compute inputs are not recovery inputs.
+import type { ReservationRecoveryStorePort, SettlementRecoveryPort } from '../ports/reservations.js';
+declare const recoveryStore: ReservationRecoveryStorePort;
+declare const settlementRecovery: SettlementRecoveryPort;
+void recoveryStore.getReservation('account', 'operation');
+void settlementRecovery.recover({ opaqueKey: 'account-key', idempotencyKey: 'operation' });
+// @ts-expect-error A recovery command cannot supply a new model input.
+void settlementRecovery.recover({ opaqueKey: 'account-key', idempotencyKey: 'operation', input: 'new work' });

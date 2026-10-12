@@ -2,6 +2,8 @@
 
 这份计划把 Dahono Router 的 DeepSeek V4.1 Flash 纳入 KAI Hour Key 的 Provider 测试路线。供应商接入沿用 `ProviderAdapterPort`，SSE、预约窗口和诊断响应头封装在 adapter 内；Exchange 的预占、结算和 Receipt 编排通过独立业务端口演进，不把供应商细节带入业务策略。
 
+2026-10-12：用户确认 MixRoute Key 已存入钥匙串，测试额度 USD 55，与 Dahono 一样暂不使用。当前推进 [跨小时结算恢复](SETTLEMENT_RECOVERY.md)，采用本地合成 Provider 与真实 SQLite；不新增预约或推理。恢复接口不带 Provider 执行依赖；待确认结果仍需后续可信对账依据。
+
 ## 当前执行顺序：先完成 Exchange 封装，再使用真实额度验收
 
 2026-10-07 用户决定：当前不消耗供应商额度进行独立的十路重叠、第十一路 429、小样本计数或整小时额度测试；先按 Exchange 计划完成封装，之后从 Exchange 产品入口开展真实验收。本节是后续执行的当前依据；下文直连 Provider 的脚本、五分钟上限和测试方法保留为已有工具与参考，不代表当前待执行队列，也不构成新预约或调用授权。已有实测及待证明项保留，不将顺序调整写成供应商永久不可执行或已通过。

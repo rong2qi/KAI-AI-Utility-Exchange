@@ -50,3 +50,19 @@ export interface ReservationStorePort {
   getHolding(accountId: string, holdingId: string): Promise<Holding | undefined>;
   inspect(accountId: string, holdingId: string): Promise<{ readonly total: number; readonly available: number; readonly reserved: number; readonly committed: number }>;
 }
+
+/** Optional recovery extension. Ordinary reservation adapters keep the original interface. */
+export interface ReservationRecoveryStorePort extends ReservationStorePort {
+  getReservation(accountId: string, idempotencyKey: string): Promise<ReservationEntry | undefined>;
+}
+
+export type SettlementRecoveryResult =
+  | { readonly status: 'settled'; readonly receipt: UsageReceipt; readonly output: unknown }
+  | { readonly status: 'pending_reconciliation'; readonly reason: 'ADMISSION_NOT_RESOLVED' | 'PROVIDER_OUTCOME_NOT_RECORDED' }
+  | { readonly status: 'released' }
+  | { readonly status: 'error'; readonly code: import('../types/errors.js').RuntimeErrorCode };
+
+/** Does not accept Provider execution, a new input or a client-supplied outcome. */
+export interface SettlementRecoveryPort {
+  recover(request: { readonly opaqueKey: string; readonly idempotencyKey: string }): Promise<SettlementRecoveryResult>;
+}

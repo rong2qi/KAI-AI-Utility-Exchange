@@ -39,7 +39,8 @@ export type Capability =
   | ComputeCapability
   | DiscoveryCapability
   | LockCapability
-  | ReceiptCapability;
+  | ReceiptCapability
+  | 'usage.recover';
 
 export type SlotState = 'before_lock' | 'locked_window' | 'active' | 'expired';
 export type DecisionCode =
@@ -89,7 +90,7 @@ export interface AuthorizationGrant {
   readonly slot: SlotWindow;
   readonly issuedAt: IsoDateTime;
   readonly expiresAt: IsoDateTime;
-  /** Receipt read window; can outlive compute eligibility. */
+  /** Receipt read / explicitly authorized recovery window; can outlive compute eligibility. */
   readonly receiptUntil: IsoDateTime;
   readonly revokedAt?: IsoDateTime;
   readonly allowProviderSwitch: boolean;

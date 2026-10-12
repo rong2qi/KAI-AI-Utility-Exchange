@@ -8,6 +8,8 @@
 
 后续沿用 `ProviderAdapterPort` 和 Exchange 先封装再真实验收的顺序，单独保留 MixRoute scope，不替换已有讯飞或 Dahono 记录。公开依据：[MixRoute Introduction](https://docs.mixroute.ai/introduction)。
 
+2026-10-12 用户更新：MixRoute 测试 Key 已由用户存入本机钥匙串，测试额度为 USD 55（用户提供，未读取余额或密钥核验）。与 Dahono 一样，当前先不用真实额度；不读取密钥值、不发起推理、不把该额度视作自动消费授权。钥匙串条目标识可在后续实际接入时确认。GEO 在本任务讨论中指品牌推荐、广告或生成式搜索优化，不是地理区域参数。
+
 ## 当前层级：internal-provider-sandbox
 
 `SandboxProviderAdapter` 是不出网的进程内 Provider 实现。它只实现 `ProviderAdapterPort`，不读取凭据，也不改变 Runtime、Holding 或 Usage Ledger 的职责。
